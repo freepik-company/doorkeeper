@@ -53,10 +53,11 @@ func NewHttpServer() *HttpServer {
 
 func (s *HttpServer) handleRequest(response http.ResponseWriter, request *http.Request) {
 	globals.Application.Logger.Infof(
-		"handle request {authorizationType '%s', host: '%s', path: '%s', headers '%v'}", 
+		"handle request {authorizationType '%s', host: '%s', path: '%s', query: %s, headers '%v'}", 
 		authorizationType,
 		request.Host,
 		request.URL.Path, 
+		request.URL.RawQuery,
 		request.Header,
 	)
 	
@@ -64,11 +65,13 @@ func (s *HttpServer) handleRequest(response http.ResponseWriter, request *http.R
 	defer func(){
 		if err != nil {
 			globals.Application.Logger.Errorf(
-				"denied request {authorizationType '%s', host: '%s', path: '%s', headers '%v'}", 
+				"denied request {authorizationType '%s', host: '%s', path: '%s', query: %s, headers '%v'}: %s", 
 				authorizationType,
 				request.Host,
 				request.URL.Path, 
+				request.URL.RawQuery,
 				request.Header,
+				err.Error(),
 			)
 			response.Header().Set(resultHeader, resultDenied)
 			response.WriteHeader(http.StatusForbidden)
@@ -79,14 +82,7 @@ func (s *HttpServer) handleRequest(response http.ResponseWriter, request *http.R
 	//
 	body, err := io.ReadAll(request.Body)
 	if err != nil {
-		globals.Application.Logger.Errorf(
-			"unable to read request body {authorizationType '%s', host: '%s', path: '%s', headers '%v'}: %s", 
-			authorizationType, 
-			request.Host, 
-			request.URL.Path, 
-			request.Header, 
-			err.Error(),
-		)
+		globals.Application.Logger.Errorf("unable to read request body: %s", err.Error())
 		return
 	}
 	
@@ -106,31 +102,29 @@ func (s *HttpServer) handleRequest(response http.ResponseWriter, request *http.R
 		if hmacType == "url" {
 			valid, err = hmac.ValidateTokenUrl(token, hmacEncryptionKey, hmacEncryptionArgotithm, pathParts[0])
 			if err != nil {
-				globals.Application.Logger.Errorf(
-					"unable to validate token in request {authorizationType '%s', host: '%s', path: '%s', headers '%v'}: %s", 
-					authorizationType, 
-					request.Host, 
-					request.URL.Path, 
-					request.Header, 
-					err.Error(),
-				)
+				err = fmt.Errorf("unable to validate token in request: %s", err.Error())
 				return
 			}
 		}
 	}
 	
-	if valid {
-		globals.Application.Logger.Infof(
-			"allowed request {host: '%s', path: '%s', headers '%v'}", 
-			request.Host, 
-			request.URL.Path, 
-			request.Header,
-		)
-
-		response.Header().Set(resultHeader, resultAllowed)
-		response.WriteHeader(http.StatusOK)
-		err = nil
+	if !valid {
+		err = fmt.Errorf("invalid token in request")		
+		return 
 	}
+	
+	globals.Application.Logger.Infof(
+		"allowed request {authorizationType '%s', host: '%s', path: '%s', query: %s, headers '%v'}", 
+		authorizationType,
+		request.Host, 
+		request.URL.Path, 
+		request.URL.RawQuery,
+		request.Header,
+	)
+
+	response.Header().Set(resultHeader, resultAllowed)
+	response.WriteHeader(http.StatusOK)
+	err = nil
 }
 
 func (s *HttpServer) Run(httpAddr string) {
