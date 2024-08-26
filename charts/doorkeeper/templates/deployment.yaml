@@ -5,74 +5,74 @@ metadata:
   labels:
     {{- include "doorkeeper.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.agent.replicaCount }}
+  replicas: {{ .Values.server.replicaCount }}
   selector:
     matchLabels:
       {{- include "doorkeeper.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.agent.podAnnotations }}
+      {{- with .Values.server.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
         {{- include "doorkeeper.selectorLabels" . | nindent 8 }}
     spec:
-      {{- with .Values.agent.imagePullSecrets }}
+      {{- with .Values.server.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "doorkeeper.serviceAccountName" . }}
       securityContext:
-        {{- toYaml .Values.agent.podSecurityContext | nindent 8 }}
+        {{- toYaml .Values.server.podSecurityContext | nindent 8 }}
       containers:
         - name: agent
-          image: "{{ .Values.agent.image.repository }}:{{ .Values.agent.image.tag | default (printf "v%s" .Chart.AppVersion) }}"
-          imagePullPolicy: {{ .Values.agent.image.pullPolicy }}
+          image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag | default (printf "v%s" .Chart.AppVersion) }}"
+          imagePullPolicy: {{ .Values.server.image.pullPolicy }}
           command:
             - /bss
             - run
             - --config
             - /etc/agent/doorkeeper.yaml
 
-          {{- with .Values.agent.extraArgs }}
+          {{- with .Values.server.extraArgs }}
           args:
             {{ toYaml . | nindent 10 }}
           {{- end }}
 
-          {{- with .Values.agent.env }}
+          {{- with .Values.server.env }}
           env:
             {{ toYaml . | nindent 10 }}
           {{- end }}
 
-          {{- with .Values.agent.envFrom }}
+          {{- with .Values.server.envFrom }}
           envFrom:
             {{ toYaml . | nindent 10 }}
           {{- end }}
 
           # TODO: Good first issue
-          {{- with .Values.agent.livenessProbe }}
+          {{- with .Values.server.livenessProbe }}
           livenessProbe:
             {{- toYaml . | nindent 12 }}
           {{- end }}
 
-          {{- with .Values.agent.readinessProbe }}
+          {{- with .Values.server.readinessProbe }}
           readinessProbe:
             {{- toYaml . | nindent 12 }}
           {{- end }}
 
           resources:
-            {{- toYaml .Values.agent.resources | nindent 12 }}
+            {{- toYaml .Values.server.resources | nindent 12 }}
           securityContext:
-            {{- toYaml .Values.agent.securityContext | nindent 12 }}
+            {{- toYaml .Values.server.securityContext | nindent 12 }}
 
           volumeMounts:
-            {{- with .Values.agent.extraVolumeMounts }}
+            {{- with .Values.server.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
 
           ports:
-            {{ range $key, $value := .Values.agent.service.ports }}
+            {{ range $key, $value := .Values.server.service.ports }}
             - name: {{ $value.name }}
               containerPort: {{ $value.targetPort }}
               {{- with $value.protocol }}
@@ -80,25 +80,25 @@ spec:
               {{- end }}
             {{- end }}
 
-            {{- with .Values.agent.extraPorts }}
+            {{- with .Values.server.extraPorts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
 
-      {{- with .Values.agent.nodeSelector }}
+      {{- with .Values.server.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.agent.affinity }}
+      {{- with .Values.server.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.agent.tolerations }}
+      {{- with .Values.server.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
 
       volumes:
-        {{- with .Values.agent.extraVolumes }}
+        {{- with .Values.server.extraVolumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
 

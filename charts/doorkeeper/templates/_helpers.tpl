@@ -54,9 +54,9 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Create the name of the service account to use
 */}}
 {{- define "doorkeeper.serviceAccountName" -}}
-{{- if .Values.agent.serviceAccount.create }}
-{{- default (include "doorkeeper.fullname" .) .Values.agent.serviceAccount.name }}
+{{- if .Values.server.serviceAccount.create }}
+{{- default (include "doorkeeper.fullname" .) .Values.server.serviceAccount.name }}
 {{- else }}
-{{- default "default" .Values.agent.serviceAccount.name }}
+{{- default "default" .Values.server.serviceAccount.name }}
 {{- end }}
 {{- end }}
