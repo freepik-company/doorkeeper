@@ -1,94 +1,36 @@
-# Doorkeeper
-![GitHub go.mod Go version (subdirectory of monorepo)](https://img.shields.io/github/go-mod/go-version/freepik-company/bucket-simple-server)
-![GitHub](https://img.shields.io/github/license/freepik-company/bucket-simple-server)
+# Helm Charts
 
-![YouTube Channel Subscribers](https://img.shields.io/youtube/channel/subscribers/UCeSb3yfsPNNVr13YsYNvCAw?label=achetronic&link=http%3A%2F%2Fyoutube.com%2Fachetronic)
-![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/achetronic?style=flat&logo=twitter&link=https%3A%2F%2Ftwitter.com%2Fachetronic)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+![Release Charts](https://github.com/freepik-company/doorkeeper/workflows/Release%20Charts/badge.svg?branch=main)
+[![Releases downloads](https://img.shields.io/github/downloads/freepik-company/doorkeeper/total.svg)](https://github.com/freepik-company/doorkeeper/releases)
 
-A tiny HTTP server to be used as external authentication service for Envoy 
+Bucket Simple Server Helm Charts
 
-## Motivation
+## Usage
 
-Life is hard, but beautiful
+[Helm](https://helm.sh) must be installed to use the charts.
+Please refer to Helm's [documentation](https://helm.sh/docs/) to get started.
 
-## Flags
-
-As almost every configuration parameter can be defined in environment vars, there are only few flags that can be defined.
-They are described in the following table:
-
-| Name              | Description                    |    Default    | Example                  |
-|:------------------|:-------------------------------|:-------------:|:-------------------------|
-| `--log-level`     | Verbosity level for logs       |    `info`     | `--log-level info`       |
-| `--disable-trace` | Disable showing traces in logs |    `info`     | `--log-level info`       |
-
-> Output is thrown always in JSON as it is more suitable for automations
-
-```console
-doorkeeper run \
-    --log-level=info
-```
-
-## Environment vars
-
-| Name                                   | Values                      | Description |
-|:---------------------------------------|:----------------------------|:------------|
-| `DOORKEEPER_AUTHORIZATION_PARAM_TYPE`  | `header\|query`             |             |
-| `DOORKEEPER_AUTHORIZATION_PARAM_NAME`  | `*`                         |             |
-| `DOORKEEPER_AUTHORIZATION_TYPE`        | `hmac\|{}`                  |             |
-| `DOORKEEPER_HMAC_TYPE`                 | `url\|{}`                   |             |
-| `DOORKEEPER_HMAC_ENCRYPTION_KEY`       | `*`                         |             |
-| `DOORKEEPER_HMAC_ENCRYPTION_ALGORITHM` | `md5\|sha1\|sha256\|sha512` |             |
-
-
-
-## How to deploy
-
-This project can be deployed in Kubernetes, but also provides binary files 
-and Docker images to make it easy to be deployed however wanted
-
-
-### Binaries
-
-Binary files for most popular platforms will be added to the [releases](https://github.com/freepik-company/doorkeeper/releases)
-
-
-### Kubernetes
-
-You can deploy `doorkeeper` in Kubernetes using Helm as follows:
+Once Helm is set up properly, add the repo as follows:
 
 ```console
 helm repo add doorkeeper https://freepik-company.github.io/doorkeeper/
-
-helm upgrade --install --wait doorkeeper \
-  --namespace doorkeeper \
-  --create-namespace freepik-company/doorkeeper
 ```
 
-> More information and Helm packages [here](https://freepik-company.github.io/doorkeeper/)
+You can then run the following command to see the charts.
 
-
-### Docker
-
-Docker images can be found in GitHub's [packages](https://github.com/freepik-company/doorkeeper/pkgs/container/doorkeeper) 
-related to this repository
-
-> Do you need it in a different container registry? I think this is not needed, but if I'm wrong, please, let's discuss 
-> it in the best place for that: an issue
+```console
+helm search repo doorkeeper
+```
 
 ## How to contribute
 
-We are open to external collaborations for this project: improvements, bugfixes, whatever.
+For doing it you must:
+* Fork the repository
+* Make your changes to the code in a specific branch
+* Open a PR
 
-For doing it, open an issue to discuss the need of the changes, then:
-
-- Fork the repository
-- Make your changes to the code
-- Open a PR and wait for review
-
-The code will be reviewed and tested (always)
-
-> We are developers and hate bad code. For that reason we ask you the highest quality
-> on each line of code to improve this project on each iteration.
+> The charts will be reviewed and tested (always)
 
 ## License
 
