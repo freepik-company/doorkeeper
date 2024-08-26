@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "doorkeeper.fullname" . }}-agent
+  name: {{ include "doorkeeper.fullname" . }}
   labels:
     {{- include "doorkeeper.labels" . | nindent 4 }}
   {{- with .Values.server.service.annotations }}
