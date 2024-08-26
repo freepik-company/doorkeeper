@@ -1,0 +1,30 @@
+apiVersion: v1
+entries:
+  doorkeeper:
+  - apiVersion: v2
+    appVersion: 0.1.1
+    created: "2024-08-26T12:57:59.754408791Z"
+    description: 'A Helm chart for Doorkeeper, a tiny HTTP server to be used as  external
+      authentication service for Envoy '
+    digest: 16a12cffcd287a3d04ea9178e2c9abaa8ca628fca7b065e32a681ea02f0f1a3f
+    home: https://github.com/freepik-company/doorkeeper
+    keywords:
+    - doorkeeper
+    - ext-authz
+    - envoy
+    kubeVersion: '>=1.22.0-0'
+    maintainers:
+    - email: ahernandez@freepik.com
+      name: Alby Hernández
+      url: https://github.com/achetronic/
+    - email: svargas@freepik.com
+      name: Sebastián Vargas
+      url: https://github.com/sebastocorp/
+    name: doorkeeper
+    sources:
+    - https://github.com/freepik-company/doorkeeper
+    type: application
+    urls:
+    - doorkeeper-0.1.1.tgz
+    version: 0.1.1
+generated: "2024-08-26T12:57:59.754454237Z"
