@@ -29,11 +29,6 @@ spec:
         - name: agent
           image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag | default (printf "v%s" .Chart.AppVersion) }}"
           imagePullPolicy: {{ .Values.server.image.pullPolicy }}
-          command:
-            - /bss
-            - run
-            - --config
-            - /etc/agent/doorkeeper.yaml
 
           {{- with .Values.server.extraArgs }}
           args:
