@@ -1,0 +1,20 @@
+{{ if .Values.server.config }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "doorkeeper.fullname" . }}-server-config
+  labels:
+    {{- include "doorkeeper.labels" . | nindent 4 }}
+    {{- with .Values.server.extraLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+
+  {{- with .Values.server.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+data:
+  doorkeeper.yaml: |-
+    {{- .Values.server.config | nindent 4 }}
+{{- end }}

@@ -5,7 +5,12 @@ fullnameOverride: ""
 
 server:
 
-  # 
+  # Specify the configuration
+  config: |
+    # A complete example in the upstream repository
+    # Ref: https://github.com/freepik-company/doorkeeper/blob/master/docs/samples/doorkeeper.yaml
+
+  #
   service:
     enabled: true
 

@@ -30,6 +30,11 @@ spec:
           image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag | default (printf "v%s" .Chart.AppVersion) }}"
           imagePullPolicy: {{ .Values.server.image.pullPolicy }}
 
+          command:
+            - /doorkeeper
+            - --config
+            - /etc/server/doorkeeper.yaml
+
           {{- with .Values.server.extraArgs }}
           args:
             {{ toYaml . | nindent 10 }}
@@ -62,6 +67,8 @@ spec:
             {{- toYaml .Values.server.securityContext | nindent 12 }}
 
           volumeMounts:
+            - name: server-config
+              mountPath: /etc/server/
             {{- with .Values.server.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -93,8 +100,9 @@ spec:
       {{- end }}
 
       volumes:
+        - name: server-config
+          configMap:
+            name: {{ include "doorkeeper.fullname" . }}-server-config
         {{- with .Values.server.extraVolumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
-
-
