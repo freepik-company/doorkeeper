@@ -4,71 +4,68 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
+	"regexp"
 	"strings"
 
 	//
-	"doorkeeper/internal/hmac"
 	"doorkeeper/internal/globals"
+	"doorkeeper/internal/hmac"
 )
 
 const (
 	resultHeader   = "x-ext-authz-check-result"
 	receivedHeader = "x-ext-authz-check-received"
 
-	resultAllowed = "allowed"
-	resultDenied  = "denied"
+	resultAllowed    = "allowed"
+	resultDenied     = "denied"
 	resultDeniedBody = "Unauthorized"
-)
-
-var (
-	
-	//
-	authorizationParamType = os.Getenv("DOORKEEPER_AUTHORIZATION_PARAM_TYPE")
-	authorizationParamName = os.Getenv("DOORKEEPER_AUTHORIZATION_PARAM_NAME")
-	authorizationType = os.Getenv("DOORKEEPER_AUTHORIZATION_TYPE")
-	
-	//
-	hmacEncryptionKey = os.Getenv("DOORKEEPER_HMAC_ENCRYPTION_KEY")
-	hmacEncryptionArgotithm = os.Getenv("DOORKEEPER_HMAC_ENCRYPTION_ALGORITHM")
-	hmacType = os.Getenv("DOORKEEPER_HMAC_TYPE")
 )
 
 type HttpServer struct {
 	*http.Server
 }
 
-func NewHttpServer() *HttpServer {
-	if authorizationParamType == "" || authorizationParamName == "" || authorizationType == "" {
+func NewHttpServer() (server *HttpServer) {
+	if globals.Application.Config.Auth.Param.Type == "" || globals.Application.Config.Auth.Param.Name == "" ||
+		globals.Application.Config.Auth.Type == "" {
+
 		globals.Application.Logger.Fatal("environment variables fot authorization must be setted")
 	}
 
-	if authorizationType == "hmac" && 
-	(hmacEncryptionKey == "" || hmacEncryptionArgotithm == "" || hmacType == "") {
+	if globals.Application.Config.Auth.Type == "hmac" &&
+		(globals.Application.Config.Hmac.EncryptionKey == "" ||
+			globals.Application.Config.Hmac.EncryptionAlgorithm == "" ||
+			globals.Application.Config.Hmac.Type == "") {
 		globals.Application.Logger.Fatal("environment variables for 'hmac' authorization type must be setted")
 	}
-	
-	return &HttpServer{}
+
+	for index, mod := range globals.Application.Config.Modifiers {
+		if mod.Type == "path" {
+			globals.Application.Config.Modifiers[index].Path.CompiledRegex = regexp.MustCompile(mod.Path.Pattern)
+		}
+	}
+
+	return server
 }
 
 func (s *HttpServer) handleRequest(response http.ResponseWriter, request *http.Request) {
 	globals.Application.Logger.Infof(
-		"handle request {authorizationType '%s', host: '%s', path: '%s', query: %s, headers '%v'}", 
-		authorizationType,
+		"handle request {authorizationType '%s', host: '%s', path: '%s', query: %s, headers '%v'}",
+		globals.Application.Config.Auth.Type,
 		request.Host,
-		request.URL.Path, 
+		request.URL.Path,
 		request.URL.RawQuery,
 		request.Header,
 	)
-	
+
 	var err error
-	defer func(){
+	defer func() {
 		if err != nil {
 			globals.Application.Logger.Errorf(
-				"denied request {authorizationType '%s', host: '%s', path: '%s', query: %s, headers '%v'}: %s", 
-				authorizationType,
+				"denied request {authorizationType '%s', host: '%s', path: '%s', query: %s, headers '%v'}: %s",
+				globals.Application.Config.Auth.Type,
 				request.Host,
-				request.URL.Path, 
+				request.URL.Path,
 				request.URL.RawQuery,
 				request.Header,
 				err.Error(),
@@ -79,45 +76,56 @@ func (s *HttpServer) handleRequest(response http.ResponseWriter, request *http.R
 		}
 	}()
 
+	for _, modifier := range globals.Application.Config.Modifiers {
+		switch modifier.Type {
+		case "path":
+			request.URL.Path = modifier.Path.CompiledRegex.ReplaceAllString(request.URL.Path, modifier.Path.Replace)
+
+		case "header":
+			// TODO
+		}
+	}
+
 	//
 	body, err := io.ReadAll(request.Body)
 	if err != nil {
 		globals.Application.Logger.Errorf("unable to read request body: %s", err.Error())
 		return
 	}
-	
+
 	//
 	receivedContent := fmt.Sprintf("%s %s%s, headers: %v, body: [%s]\n", request.Method, request.Host, request.URL, request.Header, returnIfNotTooLong(string(body)))
 	response.Header().Set(receivedHeader, receivedContent)
 
-	token := request.URL.Query().Get(authorizationParamName)
-	if authorizationParamType == "header" {
-		token = request.Header.Get(authorizationParamName)
+	token := request.URL.Query().Get(globals.Application.Config.Auth.Param.Name)
+	if globals.Application.Config.Auth.Param.Type == "header" {
+		token = request.Header.Get(globals.Application.Config.Auth.Param.Name)
 	}
 
 	var valid bool
-	if authorizationType == "hmac" {
-		pathParts := strings.Split(request.URL.Path, "?")
+	if globals.Application.Config.Auth.Type == "hmac" {
+		path := strings.Split(request.URL.Path, "?")[0]
 
-		if hmacType == "url" {
-			valid, err = hmac.ValidateTokenUrl(token, hmacEncryptionKey, hmacEncryptionArgotithm, pathParts[0])
+		if globals.Application.Config.Hmac.Type == "url" {
+			valid, err = hmac.ValidateTokenUrl(token, globals.Application.Config.Hmac.EncryptionKey,
+				globals.Application.Config.Hmac.EncryptionAlgorithm, path)
 			if err != nil {
 				err = fmt.Errorf("unable to validate token in request: %s", err.Error())
 				return
 			}
 		}
 	}
-	
+
 	if !valid {
-		err = fmt.Errorf("invalid token in request")		
-		return 
+		err = fmt.Errorf("invalid token in request")
+		return
 	}
-	
+
 	globals.Application.Logger.Infof(
-		"allowed request {authorizationType '%s', host: '%s', path: '%s', query: %s, headers '%v'}", 
-		authorizationType,
-		request.Host, 
-		request.URL.Path, 
+		"allowed request {authorizationType '%s', host: '%s', path: '%s', query: %s, headers '%v'}",
+		globals.Application.Config.Auth.Type,
+		request.Host,
+		request.URL.Path,
 		request.URL.RawQuery,
 		request.Header,
 	)

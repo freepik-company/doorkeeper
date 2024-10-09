@@ -1,0 +1,20 @@
+authorization:
+  type: hmac # hmac
+  param:
+    type: query # header|query
+    name: token
+
+hmac:
+  type: url
+  encryptionKey: "${SECRETITO}"
+  encryptionAlgorithm: "sha256"
+
+modifiers:
+  #- type: header # headers|host|path
+  #  header:
+  #    # TODO
+
+  - type: path
+    path:
+      pattern: ^(/[a-zA-Z0-9\-_]/)
+      replace: ""

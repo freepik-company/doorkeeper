@@ -5,7 +5,7 @@
 ![YouTube Channel Subscribers](https://img.shields.io/youtube/channel/subscribers/UCeSb3yfsPNNVr13YsYNvCAw?label=achetronic&link=http%3A%2F%2Fyoutube.com%2Fachetronic)
 ![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/achetronic?style=flat&logo=twitter&link=https%3A%2F%2Ftwitter.com%2Fachetronic)
 
-A tiny HTTP server to be used as external authentication service for Envoy 
+A tiny HTTP server to be used as external authentication service for Envoy
 
 ## Motivation
 
@@ -16,10 +16,12 @@ Life is hard, but beautiful
 As almost every configuration parameter can be defined in environment vars, there are only few flags that can be defined.
 They are described in the following table:
 
-| Name              | Description                    |    Default    | Example                  |
-|:------------------|:-------------------------------|:-------------:|:-------------------------|
-| `--log-level`     | Verbosity level for logs       |    `info`     | `--log-level info`       |
-| `--disable-trace` | Disable showing traces in logs |    `info`     | `--log-level info`       |
+| Name              | Description                                          |      Default      | Example                        |
+|:------------------|:-----------------------------------------------------|:-----------------:|:-------------------------------|
+| `--log-level`     | Verbosity level for logs                             |      `info`       | `--log-level info`             |
+| `--disable-trace` | Disable showing traces in logs                       |      `info`       | `--log-level info`             |
+| `--config`        | Path to the configuration file <br> [Config Example] | `doorkeeper.yaml` | `--doorkeeper doorkeeper.yaml` |
+
 
 > Output is thrown always in JSON as it is more suitable for automations
 
@@ -27,23 +29,13 @@ They are described in the following table:
 doorkeeper run \
     --log-level=info
 ```
+## Configuration
 
-## Environment vars
-
-| Name                                   | Values                      | Description |
-|:---------------------------------------|:----------------------------|:------------|
-| `DOORKEEPER_AUTHORIZATION_PARAM_TYPE`  | `header\|query`             |             |
-| `DOORKEEPER_AUTHORIZATION_PARAM_NAME`  | `*`                         |             |
-| `DOORKEEPER_AUTHORIZATION_TYPE`        | `hmac\|{}`                  |             |
-| `DOORKEEPER_HMAC_TYPE`                 | `url\|{}`                   |             |
-| `DOORKEEPER_HMAC_ENCRYPTION_KEY`       | `*`                         |             |
-| `DOORKEEPER_HMAC_ENCRYPTION_ALGORITHM` | `md5\|sha1\|sha256\|sha512` |             |
-
-
+A complete example of the config params can be found in [docs/samples/doorkeeper.yaml](./docs/samples/doorkeeper.yaml)
 
 ## How to deploy
 
-This project can be deployed in Kubernetes, but also provides binary files 
+This project can be deployed in Kubernetes, but also provides binary files
 and Docker images to make it easy to be deployed however wanted
 
 
@@ -69,10 +61,10 @@ helm upgrade --install --wait doorkeeper \
 
 ### Docker
 
-Docker images can be found in GitHub's [packages](https://github.com/freepik-company/doorkeeper/pkgs/container/doorkeeper) 
+Docker images can be found in GitHub's [packages](https://github.com/freepik-company/doorkeeper/pkgs/container/doorkeeper)
 related to this repository
 
-> Do you need it in a different container registry? I think this is not needed, but if I'm wrong, please, let's discuss 
+> Do you need it in a different container registry? I think this is not needed, but if I'm wrong, please, let's discuss
 > it in the best place for that: an issue
 
 ## How to contribute
@@ -105,3 +97,10 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
+
+
+
+[//]: #
+
+[Config Example]: <./README.md#configuration>

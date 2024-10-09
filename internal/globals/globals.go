@@ -1,6 +1,7 @@
 package globals
 
 import (
+	"doorkeeper/api"
 	"time"
 
 	"go.uber.org/zap"
@@ -15,6 +16,8 @@ var (
 type ApplicationT struct {
 	Logger   zap.SugaredLogger
 	LogLevel string
+
+	Config api.DoorkeeperConfigT
 }
 
 // SetLogger TODO

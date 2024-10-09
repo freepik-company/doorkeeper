@@ -17,19 +17,21 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
-	"log"
 
-	"doorkeeper/internal/httpserver"
+	"doorkeeper/internal/config"
 	"doorkeeper/internal/globals"
+	"doorkeeper/internal/httpserver"
 )
 
 var (
-	httpPortFlag = flag.String("port", "8000", "HTTP server port")
-	logLevelFlag = flag.String("log-level", "info", "Verbosity level for logs")
+	httpPortFlag     = flag.String("port", "8000", "HTTP server port")
+	logLevelFlag     = flag.String("log-level", "info", "Verbosity level for logs")
 	disableTraceFlag = flag.Bool("disable-trace", true, "Disable showing traces in logs")
+	configFlag       = flag.String("config", "doorkeeper.yaml", "Path to the config file")
 )
 
 func main() {
@@ -42,6 +44,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// Parse and store the config
+	configContent, err := config.ReadFile(*configFlag)
+	if err != nil {
+		globals.Application.Logger.Fatalf(fmt.Sprintf("failed parsing configuration: %s", err.Error()))
+	}
+
+	globals.Application.Config = configContent
 
 	/////////////////////////////
 	// EXECUTION FLOW RELATED
@@ -56,4 +66,3 @@ func main() {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	<-sigs
 }
-
