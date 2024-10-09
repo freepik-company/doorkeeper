@@ -1,20 +1,28 @@
+# This file contains the configuration for the Doorkeeper service.
+# The whole file supports environment variables expansion,
+# so you can use them in any part of the file
+
+# (Required) Authorization configuration such as the type or its potential parameters
 authorization:
   type: hmac # hmac
   param:
     type: query # header|query
     name: token
 
+# (Optional) When authorization is configured as HMAC, this section is required
 hmac:
   type: url
-  encryptionKey: "${SECRETITO}"
+  encryptionKey: "${ENVIRONMENT_VARIABLE_WITH_ENCRYPTION_KEY}"
   encryptionAlgorithm: "sha256"
 
+# (Optional) List of modifiers to apply to the request before signing it
 modifiers:
-  #- type: header # headers|host|path
-  #  header:
-  #    # TODO
 
   - type: path
     path:
       pattern: ^(/[a-zA-Z0-9\-_]/)
       replace: ""
+
+  #- type: header
+  #  header:
+  #    # TODO
