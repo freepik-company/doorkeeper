@@ -38,6 +38,14 @@ type HmacConfigT struct {
 	Type                string `yaml:"type"`
 	EncryptionKey       string `yaml:"encryptionKey"`
 	EncryptionAlgorithm string `yaml:"encryptionAlgorithm"`
+
+	//
+	Url HmacUrlConfigT `yaml:"url,omitempty"`
+}
+
+type HmacUrlConfigT struct {
+	EarlyEncode bool `yaml:"earlyEncode,omitempty"`
+	LowerEncode bool `yaml:"lowerEncode,omitempty"`
 }
 
 type ModifierConfigT struct {

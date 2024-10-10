@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -19,6 +20,10 @@ const (
 	resultAllowed    = "allowed"
 	resultDenied     = "denied"
 	resultDeniedBody = "Unauthorized"
+)
+
+var (
+	urlEncodeRegex = regexp.MustCompile(`%[0-9a-fA-F]{2}`)
 )
 
 type HttpServer struct {
@@ -103,11 +108,23 @@ func (s *HttpServer) handleRequest(response http.ResponseWriter, request *http.R
 	}
 
 	var valid bool
+	var generatedHmac, receivedHmac string
 	if globals.Application.Config.Auth.Type == "hmac" {
 		path := strings.Split(request.URL.Path, "?")[0]
 
 		if globals.Application.Config.Hmac.Type == "url" {
-			valid, err = hmac.ValidateTokenUrl(token, globals.Application.Config.Hmac.EncryptionKey,
+			if globals.Application.Config.Hmac.Url.EarlyEncode {
+				path = url.PathEscape(path)
+
+				if globals.Application.Config.Hmac.Url.LowerEncode {
+					path = urlEncodeRegex.ReplaceAllStringFunc(path, func(match string) string {
+						return strings.ToLower(match)
+					})
+				}
+			}
+
+			//
+			valid, generatedHmac, receivedHmac, err = hmac.ValidateTokenUrl(token, globals.Application.Config.Hmac.EncryptionKey,
 				globals.Application.Config.Hmac.EncryptionAlgorithm, path)
 			if err != nil {
 				err = fmt.Errorf("unable to validate token in request: %s", err.Error())
@@ -117,7 +134,7 @@ func (s *HttpServer) handleRequest(response http.ResponseWriter, request *http.R
 	}
 
 	if !valid {
-		err = fmt.Errorf("invalid token in request")
+		err = fmt.Errorf("invalid token in request {generatedHMAC:'%s', receivedHMAC:'%s'}", generatedHmac, receivedHmac)
 		return
 	}
 

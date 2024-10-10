@@ -4,7 +4,7 @@ type: application
 description: >-
   A Helm chart for Doorkeeper, a tiny HTTP server to be used as
   external authentication service for Envoy
-version: &chartVersion 0.3.0
+version: &chartVersion 0.4.0
 appVersion: *chartVersion
 kubeVersion: ">=1.22.0-0"
 home: https://github.com/freepik-company/doorkeeper

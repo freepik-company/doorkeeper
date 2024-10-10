@@ -50,11 +50,11 @@ func generateHMAC(tokenDigest, encryptionKey, encryptionAlgorithm string) (token
 
 // ValidateToken TODO
 // token: exp={int}~hmac={hash}
-func ValidateTokenUrl(token, encryptionKey, encryptionAlgorithm, url string) (isValid bool, err error) {
+func ValidateTokenUrl(token, encryptionKey, encryptionAlgorithm, url string) (isValid bool, generatedHmac, receivedHmac string, err error) {
 	// split token to get tokenDigest and HMAC
 	tokenParts := strings.Split(token, "~hmac=")
 	if len(tokenParts) != 2 {
-		return isValid, err
+		return isValid, generatedHmac, receivedHmac, err
 	}
 	tokenDigest := fmt.Sprintf("%s~url=%s", tokenParts[0], url)
 	tokenHMAC := []byte(tokenParts[1])
@@ -64,22 +64,25 @@ func ValidateTokenUrl(token, encryptionKey, encryptionAlgorithm, url string) (is
 	exp, err := strconv.ParseInt(expPart, 10, 64)
 	if err != nil {
 		err = fmt.Errorf("invalid expiration time '%s'", expPart)
-		return isValid, err
+		return isValid, generatedHmac, receivedHmac, err
 	}
 
 	if time.Now().Unix() >= exp {
 		err = fmt.Errorf("token has expired")
-		return isValid, err
+		return isValid, generatedHmac, receivedHmac, err
 	}
 
 	// generate HMAC with your local encription key to compare
 	generatedHMAC, err := generateHMAC(tokenDigest, encryptionKey, encryptionAlgorithm)
 	if err != nil {
-		return isValid, err
+		return isValid, generatedHmac, receivedHmac, err
 	}
+
+	generatedHmac = string(generatedHMAC)
+	receivedHmac = string(tokenHMAC)
 
 	// compare given with generated HMAC
 	isValid = hmac.Equal(generatedHMAC, tokenHMAC)
 
-	return isValid, err
+	return isValid, generatedHmac, receivedHmac, err
 }

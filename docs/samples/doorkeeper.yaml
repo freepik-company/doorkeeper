@@ -15,6 +15,12 @@ hmac:
   encryptionKey: "${ENVIRONMENT_VARIABLE_WITH_ENCRYPTION_KEY}"
   encryptionAlgorithm: "sha256"
 
+  url:
+    # (Optional) Transforms special characters (including /) with %XX sequences as needed
+    # When lowerEncode is true, encoded chars will be lowercase (e.g. %2f instead of %2F)
+    earlyEncode: true
+    lowerEncode: true
+
 # (Optional) List of modifiers to apply to the request before signing it
 modifiers:
 
