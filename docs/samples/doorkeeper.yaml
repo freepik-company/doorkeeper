@@ -2,24 +2,25 @@
 # The whole file supports environment variables expansion,
 # so you can use them in any part of the file
 
+authorizations:
 # (Required) Authorization configuration such as the type or its potential parameters
-authorization:
+- name: hmac-example
   type: hmac # hmac
   param:
     type: query # header|query
-    name: token
+    name: token # :host|:authority
+  
+  # (Optional) When authorization is configured as HMAC, this section is required
+  hmac:
+    type: url
+    encryptionKey: ${ENV:ENVIRONMENT_VARIABLE_WITH_ENCRYPTION_KEY}$
+    encryptionAlgorithm: "sha256"
 
-# (Optional) When authorization is configured as HMAC, this section is required
-hmac:
-  type: url
-  encryptionKey: "${ENVIRONMENT_VARIABLE_WITH_ENCRYPTION_KEY}"
-  encryptionAlgorithm: "sha256"
-
-  url:
-    # (Optional) Transforms special characters (including /) with %XX sequences as needed
-    # When lowerEncode is true, encoded chars will be lowercase (e.g. %2f instead of %2F)
-    earlyEncode: true
-    lowerEncode: true
+    url:
+      # (Optional) Transforms special characters (including /) with %XX sequences as needed
+      # When lowerEncode is true, encoded chars will be lowercase (e.g. %2f instead of %2F)
+      earlyEncode: true
+      lowerEncode: true
 
 # (Optional) List of modifiers to apply to the request before signing it
 modifiers:

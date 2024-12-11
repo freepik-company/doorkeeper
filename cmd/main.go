@@ -15,50 +15,41 @@
 package main
 
 import (
+	"context"
 	"flag"
-	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"doorkeeper/internal/config"
-	"doorkeeper/internal/globals"
 	"doorkeeper/internal/httpserver"
+	"doorkeeper/internal/logger"
+	"doorkeeper/internal/utils"
 )
 
 var (
-	httpPortFlag     = flag.String("port", "8000", "HTTP server port")
-	logLevelFlag     = flag.String("log-level", "info", "Verbosity level for logs")
-	disableTraceFlag = flag.Bool("disable-trace", true, "Disable showing traces in logs")
-	configFlag       = flag.String("config", "doorkeeper.yaml", "Path to the config file")
+	// httpPortFlag     = flag.String("port", "8000", "HTTP server port")
+	logLevelFlag = flag.String("log-level", "info", "Verbosity level for logs")
+	// disableTraceFlag = flag.Bool("disable-trace", true, "Disable showing traces in logs")
+	configFlag = flag.String("config", "doorkeeper.yaml", "Path to the config file")
 )
 
 func main() {
 	flag.Parse()
 
-	// Init the logger and store the level into the context
-	globals.Application.LogLevel = *logLevelFlag
-
-	err := globals.SetLogger(*logLevelFlag, *disableTraceFlag)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Parse and store the config
-	configContent, err := config.ReadFile(*configFlag)
-	if err != nil {
-		globals.Application.Logger.Fatalf(fmt.Sprintf("failed parsing configuration: %s", err.Error()))
-	}
-
-	globals.Application.Config = configContent
+	extLogger := logger.NewLogger(context.Background(), logger.GetLevel(*logLevelFlag), map[string]any{})
+	logFields := utils.GetDefaultLogFields()
 
 	/////////////////////////////
 	// EXECUTION FLOW RELATED
 	/////////////////////////////
 
-	s := httpserver.NewHttpServer()
-	go s.Run(fmt.Sprintf(":%s", *httpPortFlag))
+	s, err := httpserver.NewHttpServer(*configFlag)
+	if err != nil {
+		logFields["error"] = err.Error()
+		extLogger.Fatal("fail in http server creation", logFields)
+	}
+
+	go s.Run()
 	defer s.Stop()
 
 	// Wait for the process to be shutdown.
