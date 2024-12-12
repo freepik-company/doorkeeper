@@ -9,8 +9,15 @@ import (
 )
 
 const (
-	LogFieldKeyRequestID = "request_id"
-	LogFieldKeyRequest   = "request"
+	LogFieldKeyRequestID     = "request_id"
+	LogFieldKeyRequest       = "request"
+	LogFieldKeyResponse      = "response"
+	LogFieldKeyResponseBytes = "response_bytes"
+	LogFieldKeyCurrentAuth   = "current_auth"
+	LogFieldKeyError         = "error"
+
+	LogFieldValueDefaultStr = "none"
+	LogFieldValueDefaultInt = 0
 )
 
 type RequestT struct {
@@ -23,8 +30,9 @@ type RequestT struct {
 
 type ResponseT struct {
 	Code    int         `json:"code"`
-	Status  string      `json:"status"`
 	Headers http.Header `json:"headers"`
+	Body    string      `json:"body"`
+	Length  int         `json:"length"`
 	Request RequestT    `json:"request"`
 }
 
@@ -71,7 +79,8 @@ func RequestStruct(r *http.Request) (req RequestT) {
 }
 
 func ResponseStruct(r *http.Response) (res ResponseT) {
-	res.Status = r.Status
+	res.Body = r.Status
+	res.Length = len(r.Status)
 	res.Code = r.StatusCode
 	res.Headers = make(http.Header)
 	for hk, hvs := range r.Header {
@@ -86,29 +95,43 @@ func ResponseStruct(r *http.Response) (res ResponseT) {
 }
 
 func DefaultRequestStruct() (req RequestT) {
-	req.Method = "none"
-	req.Host = "none"
-	req.Path = "none"
+	req.Method = LogFieldValueDefaultStr
+	req.Host = LogFieldValueDefaultStr
+	req.Path = LogFieldValueDefaultStr
 	req.Headers = make(http.Header)
-	req.Body = "none"
+	req.Body = LogFieldValueDefaultStr
 	return req
 }
 
 func DefaultResponseStruct() (res ResponseT) {
 	res.Code = 0
-	res.Status = "none"
+	res.Body = LogFieldValueDefaultStr
 	res.Headers = make(http.Header)
 	res.Request = DefaultRequestStruct()
 	return res
 }
 
+func NewResponseStruct(statusCode int, headers http.Header, body string) (res ResponseT) {
+	res.Code = statusCode
+	res.Headers = headers
+	res.Body = body
+	res.Length = len(body)
+	return res
+}
+
 func GetDefaultLogFields() map[string]any {
 	return map[string]any{
-		"request_id":   "none",
-		"request":      DefaultRequestStruct(),
-		"request_body": "none",
-		"response":     DefaultResponseStruct(),
-		"current_auth": "none",
-		"error":        "none",
+		LogFieldKeyRequestID:     LogFieldValueDefaultStr,
+		LogFieldKeyRequest:       DefaultRequestStruct(),
+		LogFieldKeyResponse:      DefaultResponseStruct(),
+		LogFieldKeyResponseBytes: LogFieldValueDefaultInt,
+		LogFieldKeyCurrentAuth:   LogFieldValueDefaultStr,
+		LogFieldKeyError:         LogFieldValueDefaultStr,
+	}
+}
+
+func SetLogField(logFields map[string]any, key string, value any) {
+	if _, ok := logFields[key]; ok {
+		logFields[key] = value
 	}
 }

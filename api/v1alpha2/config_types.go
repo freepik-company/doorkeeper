@@ -19,12 +19,34 @@ package v1alpha2
 import "regexp"
 
 type DoorkeeperConfigT struct {
-	LogLevel  string                 `yaml:"logLevel"`
-	Address   string                 `yaml:"address"`
-	Port      string                 `yaml:"port"`
-	Auths     []AuthorizationConfigT `yaml:"authorizations"`
-	Modifiers []ModifierConfigT      `yaml:"modifiers"`
+	LogLevel       string                 `yaml:"logLevel"`
+	Address        string                 `yaml:"address"`
+	Port           string                 `yaml:"port"`
+	Modifiers      []ModifierConfigT      `yaml:"modifiers"`
+	Auths          []AuthorizationConfigT `yaml:"authorizations"`
+	RequestAuthReq []RequestAuthReqT      `yaml:"requestAuthRequirements"` // values: all|any
 }
+
+//--------------------------------
+// Modifiers
+//--------------------------------
+
+type ModifierConfigT struct {
+	Type string              `yaml:"type"` // values: Path
+	Path ModifierPathConfigT `yaml:"path"`
+}
+
+type ModifierPathConfigT struct {
+	Pattern string `yaml:"pattern"`
+	Replace string `yaml:"replace"`
+
+	// Carry stuff
+	CompiledRegex *regexp.Regexp
+}
+
+//--------------------------------
+// Authorization
+//--------------------------------
 
 type AuthorizationConfigT struct {
 	Name  string           `yaml:"name"`
@@ -52,15 +74,12 @@ type HmacUrlConfigT struct {
 	LowerEncode bool `yaml:"lowerEncode,omitempty"`
 }
 
-type ModifierConfigT struct {
-	Type string              `yaml:"type"` // values: Path
-	Path ModifierPathConfigT `yaml:"path"`
-}
+//--------------------------------
+// RequestAuthRequirement
+//--------------------------------
 
-type ModifierPathConfigT struct {
-	Pattern string `yaml:"pattern"`
-	Replace string `yaml:"replace"`
-
-	// Carry stuff
-	CompiledRegex *regexp.Regexp
+type RequestAuthReqT struct {
+	Name           string   `yaml:"name"`
+	Type           string   `yaml:"type"` // values: all|any
+	Authorizations []string `yaml:"authorizations"`
 }

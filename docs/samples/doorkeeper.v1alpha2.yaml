@@ -2,17 +2,30 @@
 # The whole file supports environment variables expansion,
 # so you can use them in any part of the file
 
+logLevel: debug
+address: "0.0.0.0"
+port: "8080"
+
+# (Optional) List of modifiers to apply to the request before signing it
+modifiers:
+  - type: Path
+    path:
+      pattern: ^(/[a-zA-Z0-9\-_]/)
+      replace: ""
+  #- type: header
+  #  header:
+  #    # TODO
+
 authorizations:
 # (Required) Authorization configuration such as the type or its potential parameters
 - name: hmac-example
-  type: hmac # hmac
+  type: HMAC # HMAC
   param:
-    type: query # header|query
+    type: Query # Header|Query
     name: token # :host|:authority
-  
   # (Optional) When authorization is configured as HMAC, this section is required
   hmac:
-    type: url
+    type: URL
     encryptionKey: ${ENV:ENVIRONMENT_VARIABLE_WITH_ENCRYPTION_KEY}$
     encryptionAlgorithm: "sha256"
 
@@ -22,14 +35,7 @@ authorizations:
       earlyEncode: true
       lowerEncode: true
 
-# (Optional) List of modifiers to apply to the request before signing it
-modifiers:
-
-  - type: path
-    path:
-      pattern: ^(/[a-zA-Z0-9\-_]/)
-      replace: ""
-
-  #- type: header
-  #  header:
-  #    # TODO
+requestAuthRequirements:
+- name: any-example
+  type: all # all|any
+  authorizations: ["hmac-example"]

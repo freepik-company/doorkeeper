@@ -26,6 +26,30 @@ func expandEnv(input []byte) []byte {
 
 // checkConfig TODO
 func checkConfig(config v1alpha2.DoorkeeperConfigT) error {
+	//------------------------------
+	// Modifiers
+	//------------------------------
+
+	modTypes := []string{"Path"}
+	for _, modv := range config.Modifiers {
+		if !slices.Contains(modTypes, modv.Type) {
+			return fmt.Errorf("modifier type must be one of %v", modTypes)
+		}
+
+		switch modv.Type {
+		case "Path":
+			{
+				if modv.Path.Pattern == "" {
+					return fmt.Errorf("pattern in path modifier must be set")
+				}
+			}
+		}
+	}
+
+	//------------------------------
+	// Authorizations
+	//------------------------------
+
 	if len(config.Auths) <= 0 {
 		return fmt.Errorf("no authorizations defined")
 	}
@@ -80,18 +104,35 @@ func checkConfig(config v1alpha2.DoorkeeperConfigT) error {
 		}
 	}
 
-	modTypes := []string{"Path"}
-	for _, modv := range config.Modifiers {
-		if !slices.Contains(modTypes, modv.Type) {
-			return fmt.Errorf("modifier type must be one of %v", modTypes)
+	//------------------------------
+	// RequestAuthRequirements
+	//------------------------------
+
+	if len(config.RequestAuthReq) <= 0 {
+		return fmt.Errorf("no request auth requirements defined")
+	}
+
+	reqTypes := []string{"all", "any"}
+	for _, reqv := range config.RequestAuthReq {
+		if !slices.Contains(reqTypes, reqv.Type) {
+			return fmt.Errorf("request auth requirement type must be one of %v", reqTypes)
 		}
 
-		switch modv.Type {
-		case "Path":
-			{
-				if modv.Path.Pattern == "" {
-					return fmt.Errorf("pattern in path modifier must be set")
+		if len(reqv.Authorizations) <= 0 {
+			return fmt.Errorf("no authorizations in request auth requirements")
+		}
+
+		for _, authn := range reqv.Authorizations {
+			found := false
+			for _, authv := range config.Auths {
+				if authv.Name == authn {
+					found = true
+					break
 				}
+			}
+
+			if !found {
+				return fmt.Errorf("specified authorization name in request auth requirement not found in authorization list")
 			}
 		}
 	}

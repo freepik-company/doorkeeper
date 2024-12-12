@@ -3,11 +3,27 @@ package httpserver
 import (
 	"doorkeeper/api/v1alpha2"
 	"doorkeeper/internal/hmac"
+	"doorkeeper/internal/utils"
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
+
+func sendResponse(w http.ResponseWriter, resp utils.ResponseT) (n int, err error) {
+	for hk, hvs := range resp.Headers {
+		for _, hv := range hvs {
+			w.Header().Add(hk, hv)
+		}
+	}
+	w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set("Content-Length", strconv.Itoa(resp.Length))
+
+	w.WriteHeader(resp.Code)
+	n, err = w.Write([]byte(resp.Body))
+	return n, err
+}
 
 func (s *HttpServer) applyModifiers(r *http.Request) {
 	for _, modv := range s.config.Modifiers {
