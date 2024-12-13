@@ -11,6 +11,33 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	// Modifiers types
+
+	ConfigTypeValueModifierPATH   = "Path"
+	ConfigTypeValueModifierHEADER = "Header"
+
+	// Authorizations types
+
+	ConfigTypeValueAuthHMAC = "HMAC"
+	ConfigTypeValueAuthCIDR = "CIDR"
+
+	ConfigTypeValueAuthParamHEADER = "Header"
+	ConfigTypeValueAuthParamQUERY  = "Query"
+
+	ConfigTypeValueAuthHmacURL = "URL"
+
+	ConfigTypeValueAuthHmacAlgorithmMD5    = "md5"
+	ConfigTypeValueAuthHmacAlgorithmSHA1   = "sha1"
+	ConfigTypeValueAuthHmacAlgorithmSHA256 = "sha256"
+	ConfigTypeValueAuthHmacAlgorithmSHA512 = "sha512"
+
+	// Requirements types
+
+	ConfigTypeValueRequirementALL = "all"
+	ConfigTypeValueRequirementANY = "any"
+)
+
 func expandEnv(input []byte) []byte {
 	re := regexp.MustCompile(`\${ENV:([A-Za-z_][A-Za-z0-9_]*)}\$`)
 	result := re.ReplaceAllFunc(input, func(match []byte) []byte {
@@ -30,7 +57,7 @@ func checkConfig(config v1alpha2.DoorkeeperConfigT) error {
 	// Modifiers
 	//------------------------------
 
-	modTypes := []string{"Path"}
+	modTypes := []string{ConfigTypeValueModifierPATH}
 	for _, modv := range config.Modifiers {
 		if !slices.Contains(modTypes, modv.Type) {
 			return fmt.Errorf("modifier type must be one of %v", modTypes)
@@ -54,8 +81,8 @@ func checkConfig(config v1alpha2.DoorkeeperConfigT) error {
 		return fmt.Errorf("no authorizations defined")
 	}
 
-	authTypes := []string{"HMAC", "CIDR", "IP"}
-	authParamTypes := []string{"Header", "Query"}
+	authTypes := []string{ConfigTypeValueAuthHMAC, ConfigTypeValueAuthCIDR}
+	authParamTypes := []string{ConfigTypeValueAuthParamHEADER, ConfigTypeValueAuthParamQUERY}
 	for _, authv := range config.Auths {
 		// check auth basic fields
 		if authv.Name == "" {
@@ -77,14 +104,14 @@ func checkConfig(config v1alpha2.DoorkeeperConfigT) error {
 
 		// check specific types param fields
 		switch authv.Type {
-		case "HMAC":
+		case ConfigTypeValueAuthHMAC:
 			{
-				authHmacTypes := []string{"URL"}
+				authHmacTypes := []string{ConfigTypeValueAuthHmacURL}
 				if !slices.Contains(authHmacTypes, authv.Hmac.Type) {
 					return fmt.Errorf("hmac type in authorizations must be one of %v", authHmacTypes)
 				}
 
-				encryptionAlgorithms := []string{"md5", "sha1", "sha256", "sha512"}
+				encryptionAlgorithms := []string{ConfigTypeValueAuthHmacAlgorithmMD5, ConfigTypeValueAuthHmacAlgorithmSHA1, ConfigTypeValueAuthHmacAlgorithmSHA256, ConfigTypeValueAuthHmacAlgorithmSHA512}
 				if !slices.Contains(encryptionAlgorithms, authv.Hmac.EncryptionAlgorithm) {
 					return fmt.Errorf("hmac encryption algorithm in authorizations must be one of %v", encryptionAlgorithms)
 				}
@@ -93,13 +120,9 @@ func checkConfig(config v1alpha2.DoorkeeperConfigT) error {
 					return fmt.Errorf("encription key in hmac authorizations must be set")
 				}
 			}
-		case "CIDR":
+		case ConfigTypeValueAuthCIDR:
 			{
 				return fmt.Errorf("authorization type 'CIDR' not imlemented yet")
-			}
-		case "IP":
-			{
-				return fmt.Errorf("authorization type 'IP' not imlemented yet")
 			}
 		}
 	}
@@ -112,7 +135,7 @@ func checkConfig(config v1alpha2.DoorkeeperConfigT) error {
 		return fmt.Errorf("no request auth requirements defined")
 	}
 
-	reqTypes := []string{"all", "any"}
+	reqTypes := []string{ConfigTypeValueRequirementALL, ConfigTypeValueRequirementANY}
 	for _, reqv := range config.RequestAuthReq {
 		if !slices.Contains(reqTypes, reqv.Type) {
 			return fmt.Errorf("request auth requirement type must be one of %v", reqTypes)
@@ -135,6 +158,15 @@ func checkConfig(config v1alpha2.DoorkeeperConfigT) error {
 				return fmt.Errorf("specified authorization name in request auth requirement not found in authorization list")
 			}
 		}
+	}
+
+	//------------------------------
+	// Response
+	//------------------------------
+
+	if (config.Response.Denied.StatusCode < 100 || config.Response.Denied.StatusCode > 599) ||
+		(config.Response.Allowed.StatusCode < 100 || config.Response.Allowed.StatusCode > 599) {
+		return fmt.Errorf("status code fields in response config field must be set with valid status codes (from 100 to 599)")
 	}
 
 	return nil

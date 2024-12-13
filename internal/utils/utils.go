@@ -9,12 +9,14 @@ import (
 )
 
 const (
-	LogFieldKeyRequestID     = "request_id"
-	LogFieldKeyRequest       = "request"
-	LogFieldKeyResponse      = "response"
-	LogFieldKeyResponseBytes = "response_bytes"
-	LogFieldKeyCurrentAuth   = "current_auth"
-	LogFieldKeyError         = "error"
+	LogFieldKeyRequestID           = "request_id"
+	LogFieldKeyRequest             = "request"
+	LogFieldKeyResponse            = "response"
+	LogFieldKeyResponseBytes       = "response_bytes"
+	LogFieldKeyAuthorization       = "authorization"
+	LogFieldKeyAuthorizationResult = "authorization_result"
+	LogFieldKeyRequirement         = "requirement"
+	LogFieldKeyError               = "error"
 
 	LogFieldValueDefaultStr = "none"
 	LogFieldValueDefaultInt = 0
@@ -112,6 +114,10 @@ func DefaultResponseStruct() (res ResponseT) {
 }
 
 func NewResponseStruct(statusCode int, headers http.Header, body string) (res ResponseT) {
+	if headers == nil {
+		headers = make(http.Header)
+	}
+
 	res.Code = statusCode
 	res.Headers = headers
 	res.Body = body
@@ -121,12 +127,14 @@ func NewResponseStruct(statusCode int, headers http.Header, body string) (res Re
 
 func GetDefaultLogFields() map[string]any {
 	return map[string]any{
-		LogFieldKeyRequestID:     LogFieldValueDefaultStr,
-		LogFieldKeyRequest:       DefaultRequestStruct(),
-		LogFieldKeyResponse:      DefaultResponseStruct(),
-		LogFieldKeyResponseBytes: LogFieldValueDefaultInt,
-		LogFieldKeyCurrentAuth:   LogFieldValueDefaultStr,
-		LogFieldKeyError:         LogFieldValueDefaultStr,
+		LogFieldKeyRequestID:           LogFieldValueDefaultStr,
+		LogFieldKeyRequest:             DefaultRequestStruct(),
+		LogFieldKeyResponse:            DefaultResponseStruct(),
+		LogFieldKeyResponseBytes:       LogFieldValueDefaultInt,
+		LogFieldKeyAuthorization:       LogFieldValueDefaultStr,
+		LogFieldKeyAuthorizationResult: LogFieldValueDefaultStr,
+		LogFieldKeyRequirement:         LogFieldValueDefaultStr,
+		LogFieldKeyError:               LogFieldValueDefaultStr,
 	}
 }
 

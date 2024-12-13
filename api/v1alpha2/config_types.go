@@ -24,7 +24,8 @@ type DoorkeeperConfigT struct {
 	Port           string                 `yaml:"port"`
 	Modifiers      []ModifierConfigT      `yaml:"modifiers"`
 	Auths          []AuthorizationConfigT `yaml:"authorizations"`
-	RequestAuthReq []RequestAuthReqT      `yaml:"requestAuthRequirements"` // values: all|any
+	RequestAuthReq []RequestAuthReqT      `yaml:"requestAuthRequirements"`
+	Response       ResponseConfigT        `yaml:"response"`
 }
 
 //--------------------------------
@@ -82,4 +83,19 @@ type RequestAuthReqT struct {
 	Name           string   `yaml:"name"`
 	Type           string   `yaml:"type"` // values: all|any
 	Authorizations []string `yaml:"authorizations"`
+}
+
+// --------------------------------
+// Response
+// --------------------------------
+
+type ResponseConfigT struct {
+	Denied  ResponseT `yaml:"denied"`
+	Allowed ResponseT `yaml:"allowed"`
+}
+
+type ResponseT struct {
+	StatusCode int               `yaml:"statusCode"`
+	Headers    map[string]string `yaml:"headers"`
+	Body       string            `yaml:"body"`
 }

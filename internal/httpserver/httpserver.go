@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"regexp"
 	"slices"
+	"strconv"
 	"time"
 
 	//
@@ -16,14 +17,14 @@ import (
 )
 
 const (
-	resultHeader   = "x-ext-authz-check-result"
-	receivedHeader = "x-ext-authz-check-received"
+// resultHeader   = "x-ext-authz-check-result"
+// receivedHeader = "x-ext-authz-check-received"
 
-	resultAllowed     = "allowed"
-	resultAllowedBody = "Authorized"
+// resultAllowed     = "allowed"
+// resultAllowedBody = "Authorized"
 
-	resultDenied     = "denied"
-	resultDeniedBody = "Unauthorized"
+// resultDenied     = "denied"
+// resultDeniedBody = "Unauthorized"
 )
 
 var (
@@ -80,19 +81,30 @@ func getHealthz(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *HttpServer) handleRequest(w http.ResponseWriter, r *http.Request) {
+	var err error = nil
+
 	logFields := utils.GetDefaultLogFields()
 	utils.SetLogField(logFields, utils.LogFieldKeyRequestID, utils.RequestID(r))
+	utils.SetLogField(logFields, utils.LogFieldKeyRequest, utils.RequestStruct(r))
 
-	requestStruct := utils.RequestStruct(r)
-	utils.SetLogField(logFields, utils.LogFieldKeyRequest, requestStruct)
-
-	responseStruct := utils.NewResponseStruct(http.StatusForbidden, make(http.Header), resultDeniedBody)
-	responseStruct.Headers.Set(resultHeader, resultDenied)
-	responseStruct.Headers.Set(receivedHeader, fmt.Sprintf("%s %s%s, headers: %v, body: [%s]\n", requestStruct.Method, requestStruct.Host, requestStruct.Path, requestStruct.Headers, requestStruct.Body))
+	// Set denied response values
+	responseStruct := utils.NewResponseStruct(s.config.Response.Denied.StatusCode, nil, s.config.Response.Denied.Body)
+	for hk, hv := range s.config.Response.Denied.Headers {
+		responseStruct.Headers.Set(hk, hv)
+	}
 
 	s.log.Info("handle request", logFields)
 
 	defer func() {
+		if err != nil {
+			// Set error response values
+			responseStruct.Code = http.StatusInternalServerError
+			responseStruct.Body = fmt.Sprintf("%d %s", responseStruct.Code, http.StatusText(responseStruct.Code))
+			responseStruct.Length = len(responseStruct.Body)
+		}
+
+		utils.SetLogField(logFields, utils.LogFieldKeyResponse, responseStruct)
+
 		n, err := sendResponse(w, responseStruct)
 		utils.SetLogField(logFields, utils.LogFieldKeyResponseBytes, n)
 		if err != nil {
@@ -101,33 +113,62 @@ func (s *HttpServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		s.log.Error("success in handle request", logFields)
+		s.log.Info("success in handle request", logFields)
 	}()
 
 	s.applyModifiers(r)
 	responseStruct.Request = utils.RequestStruct(r)
 
-	authResults := []bool{}
-	for _, authv := range s.config.Auths {
-		valid, err := checkAuthorization(r, authv)
-		if err != nil {
-			utils.SetLogField(logFields, utils.LogFieldKeyError, err.Error())
-			s.log.Error("unable to check authorization", logFields)
-			err = nil
-			continue
+	for _, reqv := range s.config.RequestAuthReq {
+		utils.SetLogField(logFields, utils.LogFieldKeyRequirement, reqv.Name)
+
+		reqResults := []bool{}
+		valid := false
+		for _, authn := range reqv.Authorizations {
+			utils.SetLogField(logFields, utils.LogFieldKeyAuthorization, authn)
+
+			valid, err = checkAuthorization(r, s.auths[authn])
+			if err != nil {
+				utils.SetLogField(logFields, utils.LogFieldKeyError, err.Error())
+				s.log.Error("unable to check authorization", logFields)
+				return
+			}
+			utils.SetLogField(logFields, utils.LogFieldKeyAuthorizationResult, strconv.FormatBool(valid))
+
+			s.log.Debug("success in check authorization", logFields)
+			reqResults = append(reqResults, valid)
 		}
-		authResults = append(authResults, valid)
+		utils.SetLogField(logFields, utils.LogFieldKeyAuthorization, utils.LogFieldValueDefaultStr)
+		utils.SetLogField(logFields, utils.LogFieldKeyAuthorizationResult, utils.LogFieldValueDefaultStr)
+
+		switch reqv.Type {
+		case config.ConfigTypeValueRequirementALL:
+			{
+				if slices.Contains(reqResults, false) {
+					s.log.Info("denied request", logFields)
+					return
+				}
+			}
+		case config.ConfigTypeValueRequirementANY:
+			{
+				if !slices.Contains(reqResults, true) {
+					s.log.Info("denied request", logFields)
+					return
+				}
+			}
+		}
+	}
+	utils.SetLogField(logFields, utils.LogFieldKeyRequirement, utils.LogFieldValueDefaultStr)
+
+	// Set allowed response values
+	responseStruct.Code = s.config.Response.Allowed.StatusCode
+	responseStruct.Body = s.config.Response.Allowed.Body
+	responseStruct.Length = len(s.config.Response.Allowed.Body)
+	for hk, hv := range s.config.Response.Allowed.Headers {
+		responseStruct.Headers.Set(hk, hv)
 	}
 
-	if slices.Contains(authResults, false) {
-		return
-	}
-
-	//
-	responseStruct.Code = http.StatusOK
-	responseStruct.Headers.Set(resultHeader, resultAllowed)
-	responseStruct.Body = resultAllowedBody
-	responseStruct.Length = len(resultAllowedBody)
+	s.log.Info("allowed request", logFields)
 }
 
 func (s *HttpServer) Run() {
@@ -136,7 +177,7 @@ func (s *HttpServer) Run() {
 	s.log.Info("starting HTTP server", logFields)
 	err := s.server.ListenAndServe()
 	if err != nil {
-		logFields["error"] = err.Error()
+		utils.SetLogField(logFields, utils.LogFieldKeyError, err.Error())
 		s.log.Error("server failed", logFields)
 	}
 }
@@ -146,7 +187,7 @@ func (s *HttpServer) Stop() {
 
 	err := s.server.Close()
 	if err != nil {
-		logFields["error"] = err.Error()
+		utils.SetLogField(logFields, utils.LogFieldKeyError, err.Error())
 		s.log.Error("HTTP server close with error", logFields)
 		return
 	}

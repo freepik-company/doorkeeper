@@ -39,3 +39,15 @@ requestAuthRequirements:
 - name: any-example
   type: all # all|any
   authorizations: ["hmac-example"]
+
+response:
+  denied:
+    statusCode: 403
+    headers:
+      "x-auth-header": "denied"
+    body: "Authorized"
+  allowed:
+    statusCode: 200
+    headers:
+      "x-auth-header": "allowed"
+    body: "Unauthorized"
