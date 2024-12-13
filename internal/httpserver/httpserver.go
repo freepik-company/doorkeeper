@@ -3,6 +3,7 @@ package httpserver
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"regexp"
 	"slices"
@@ -44,6 +45,41 @@ func NewHttpServer(filepath string) (server *HttpServer, err error) {
 	server.config, err = config.ParseConfigFile(filepath)
 	if err != nil {
 		return server, err
+	}
+
+	for modi, modv := range server.config.Modifiers {
+		switch modv.Type {
+		case config.ConfigTypeValueModifierPATH:
+			{
+				server.config.Modifiers[modi].Path.CompiledRegex = regexp.MustCompile(modv.Path.Pattern)
+			}
+		case config.ConfigTypeValueModifierHEADER:
+			{
+				return server, fmt.Errorf("header modifier type not implemented yet")
+			}
+		}
+	}
+
+	for authi, authv := range server.config.Auths {
+		switch authv.Type {
+		case config.ConfigTypeValueAuthHMAC:
+		case config.ConfigTypeValueAuthIPLIST:
+			{
+				_, server.config.Auths[authi].IpList.CidrCompiled, err = net.ParseCIDR(authv.IpList.Cidr)
+				if err != nil {
+					return server, err
+				}
+
+				for _, tnv := range authv.IpList.TrustedNetworks {
+					var cidr *net.IPNet
+					_, cidr, err = net.ParseCIDR(tnv)
+					if err != nil {
+						return server, err
+					}
+					server.config.Auths[authi].IpList.TrustedNetworksCompiled = append(server.config.Auths[authi].IpList.TrustedNetworksCompiled, cidr)
+				}
+			}
+		}
 	}
 
 	server.auths = make(map[string]*v1alpha2.AuthorizationConfigT)

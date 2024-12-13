@@ -16,7 +16,10 @@ limitations under the License.
 
 package v1alpha2
 
-import "regexp"
+import (
+	"net"
+	"regexp"
+)
 
 type DoorkeeperConfigT struct {
 	LogLevel       string                 `yaml:"logLevel"`
@@ -51,15 +54,19 @@ type ModifierPathConfigT struct {
 
 type AuthorizationConfigT struct {
 	Name  string           `yaml:"name"`
-	Type  string           `yaml:"type"` // values: HMAC
+	Type  string           `yaml:"type"` // values: HMAC|CIDR
 	Param AuthParamConfigT `yaml:"param"`
-	Hmac  HmacConfigT      `yaml:"hmac"`
+
+	Hmac   HmacConfigT   `yaml:"hmac"`
+	IpList IpListConfigT `yaml:"ipList"`
 }
 
 type AuthParamConfigT struct {
 	Type string `yaml:"type"` // values: Header|Query
 	Name string `yaml:"name"` // values: :host|:authority|<header-name>
 }
+
+// HMAC
 
 type HmacConfigT struct {
 	Type                string `yaml:"type"` // values: URL
@@ -73,6 +80,19 @@ type HmacConfigT struct {
 type HmacUrlConfigT struct {
 	EarlyEncode bool `yaml:"earlyEncode,omitempty"`
 	LowerEncode bool `yaml:"lowerEncode,omitempty"`
+}
+
+// IPLIST
+
+type IpListConfigT struct {
+	Separator       string   `yaml:"separator"`
+	Reverse         bool     `yaml:"reverse"`
+	Cidr            string   `yaml:"cidr"`
+	TrustedNetworks []string `yaml:"trustedNetworks"`
+
+	// Carry stuff
+	CidrCompiled            *net.IPNet
+	TrustedNetworksCompiled []*net.IPNet
 }
 
 //--------------------------------

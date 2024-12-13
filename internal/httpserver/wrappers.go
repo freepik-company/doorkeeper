@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -49,6 +50,11 @@ func checkAuthorization(r *http.Request, auth *v1alpha2.AuthorizationConfigT) (v
 		paramToCheck = r.Header.Get(auth.Param.Name)
 	}
 
+	if paramToCheck == "" {
+		err = fmt.Errorf("empty param to check in request")
+		return valid, err
+	}
+
 	switch auth.Type {
 	case config.ConfigTypeValueAuthHMAC:
 		{
@@ -73,6 +79,45 @@ func checkAuthorization(r *http.Request, auth *v1alpha2.AuthorizationConfigT) (v
 				}
 				_ = generatedHmac
 				_ = receivedHmac
+			}
+		}
+	case config.ConfigTypeValueAuthIPLIST:
+		{
+			iplist := strings.Split(paramToCheck, auth.IpList.Separator)
+
+			// filter trusted networks
+			filteredIpList := []net.IP{}
+			for _, ipv := range iplist {
+				trimipv := strings.TrimSpace(ipv)
+				currentIP := net.ParseIP(trimipv)
+				if currentIP == nil {
+					err = fmt.Errorf("invalid ip '%s' in list recieved", trimipv)
+					return valid, err
+				}
+
+				found := false
+				for _, tnv := range auth.IpList.TrustedNetworksCompiled {
+					if tnv.Contains(currentIP) {
+						found = true
+						break
+					}
+				}
+
+				if !found {
+					filteredIpList = append(filteredIpList, currentIP)
+				}
+			}
+
+			// check filtered ip list
+
+			if len(filteredIpList) != 1 {
+				err = fmt.Errorf("to mutch ips in list after filter trusted networks %v", filteredIpList)
+				return valid, err
+			}
+
+			valid = auth.IpList.CidrCompiled.Contains(filteredIpList[0])
+			if auth.IpList.Reverse {
+				valid = !valid
 			}
 		}
 	}

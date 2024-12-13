@@ -19,8 +19,8 @@ const (
 
 	// Authorizations types
 
-	ConfigTypeValueAuthHMAC = "HMAC"
-	ConfigTypeValueAuthCIDR = "CIDR"
+	ConfigTypeValueAuthHMAC   = "HMAC"
+	ConfigTypeValueAuthIPLIST = "IPLIST"
 
 	ConfigTypeValueAuthParamHEADER = "Header"
 	ConfigTypeValueAuthParamQUERY  = "Query"
@@ -81,7 +81,7 @@ func checkConfig(config v1alpha2.DoorkeeperConfigT) error {
 		return fmt.Errorf("no authorizations defined")
 	}
 
-	authTypes := []string{ConfigTypeValueAuthHMAC, ConfigTypeValueAuthCIDR}
+	authTypes := []string{ConfigTypeValueAuthHMAC, ConfigTypeValueAuthIPLIST}
 	authParamTypes := []string{ConfigTypeValueAuthParamHEADER, ConfigTypeValueAuthParamQUERY}
 	for _, authv := range config.Auths {
 		// check auth basic fields
@@ -120,9 +120,11 @@ func checkConfig(config v1alpha2.DoorkeeperConfigT) error {
 					return fmt.Errorf("encription key in hmac authorizations must be set")
 				}
 			}
-		case ConfigTypeValueAuthCIDR:
+		case ConfigTypeValueAuthIPLIST:
 			{
-				return fmt.Errorf("authorization type 'CIDR' not imlemented yet")
+				if authv.IpList.Cidr == "" {
+					return fmt.Errorf("cidr field in ip list authorizations must be set")
+				}
 			}
 		}
 	}

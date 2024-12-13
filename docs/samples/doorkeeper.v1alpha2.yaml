@@ -19,7 +19,7 @@ modifiers:
 authorizations:
 # (Required) Authorization configuration such as the type or its potential parameters
 - name: hmac-example
-  type: HMAC # HMAC
+  type: HMAC # HMAC|IPLIST
   param:
     type: Query # Header|Query
     name: token # :host|:authority
@@ -34,6 +34,12 @@ authorizations:
       # When lowerEncode is true, encoded chars will be lowercase (e.g. %2f instead of %2F)
       earlyEncode: true
       lowerEncode: true
+  ipList:
+    separator: ","
+    reverse: true
+    cidr: "0.0.0.0/0"
+    trustedNetworks:
+      - 127.0.0.0/8
 
 requestAuthRequirements:
 - name: any-example
