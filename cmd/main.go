@@ -21,16 +21,14 @@ import (
 	"os/signal"
 	"syscall"
 
-	"doorkeeper/internal/httpserver"
+	"doorkeeper/internal/doorkeeper"
 	"doorkeeper/internal/logger"
 	"doorkeeper/internal/utils"
 )
 
 var (
-	// httpPortFlag     = flag.String("port", "8000", "HTTP server port")
 	logLevelFlag = flag.String("log-level", "info", "Verbosity level for logs")
-	// disableTraceFlag = flag.Bool("disable-trace", true, "Disable showing traces in logs")
-	configFlag = flag.String("config", "doorkeeper.yaml", "Path to the config file")
+	configFlag   = flag.String("config", "doorkeeper.yaml", "Path to the config file")
 )
 
 func main() {
@@ -43,9 +41,9 @@ func main() {
 	// EXECUTION FLOW RELATED
 	/////////////////////////////
 
-	s, err := httpserver.NewHttpServer(*configFlag)
+	s, err := doorkeeper.NewDoorkeeper(*configFlag)
 	if err != nil {
-		logFields["error"] = err.Error()
+		utils.SetLogField(logFields, utils.LogFieldKeyError, err.Error())
 		extLogger.Fatal("fail in http server creation", logFields)
 	}
 

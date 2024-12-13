@@ -9,12 +9,12 @@ import (
 )
 
 const (
-	LogFieldKeyRequestID           = "request_id"
+	LogFieldKeyRequestID           = "requestID"
 	LogFieldKeyRequest             = "request"
 	LogFieldKeyResponse            = "response"
-	LogFieldKeyResponseBytes       = "response_bytes"
+	LogFieldKeyResponseBytes       = "responseBytes"
 	LogFieldKeyAuthorization       = "authorization"
-	LogFieldKeyAuthorizationResult = "authorization_result"
+	LogFieldKeyAuthorizationResult = "authorizationResult"
 	LogFieldKeyRequirement         = "requirement"
 	LogFieldKeyError               = "error"
 

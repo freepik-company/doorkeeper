@@ -1,4 +1,4 @@
-package httpserver
+package doorkeeper
 
 import (
 	"fmt"
@@ -32,8 +32,8 @@ func sendResponse(w http.ResponseWriter, resp utils.ResponseT) (n int, err error
 	return n, err
 }
 
-func (s *HttpServer) applyModifiers(r *http.Request) {
-	for _, modv := range s.config.Modifiers {
+func (d *DoorkeeperT) applyModifiers(r *http.Request) {
+	for _, modv := range d.config.Modifiers {
 		switch modv.Type {
 		case config.ConfigTypeValueModifierPATH:
 			r.URL.Path = modv.Path.CompiledRegex.ReplaceAllString(r.URL.Path, modv.Path.Replace)
