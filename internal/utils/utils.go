@@ -23,11 +23,12 @@ const (
 )
 
 type RequestT struct {
-	Method  string      `json:"method"`
-	Host    string      `json:"host"`
-	Path    string      `json:"path"`
-	Headers http.Header `json:"headers"`
-	Body    string      `json:"body"`
+	Method      string      `json:"method"`
+	Host        string      `json:"host"`
+	Path        string      `json:"path"`
+	QueryParams string      `json:"queryParams"`
+	Headers     http.Header `json:"headers"`
+	Body        string      `json:"body"`
 }
 
 type ResponseT struct {
@@ -46,7 +47,7 @@ func RequestID(r *http.Request) string {
 	}
 	headers += "}"
 
-	reqStr := fmt.Sprintf("{method: '%s', host: '%s', path: '%s', headers: '%s'}", r.Method, r.Host, r.URL.Path, headers)
+	reqStr := fmt.Sprintf("{method: '%s', host: '%s', path: '%s/%s', headers: '%s'}", r.Method, r.Host, r.URL.Path, r.URL.RawQuery, headers)
 	md5Hash := md5.New()
 	_, err := md5Hash.Write([]byte(reqStr))
 	if err != nil {
@@ -60,6 +61,7 @@ func RequestStruct(r *http.Request) (req RequestT) {
 	req.Method = r.Method
 	req.Host = r.Host
 	req.Path = r.URL.Path
+	req.QueryParams = r.URL.RawQuery
 	req.Headers = make(http.Header)
 	for hk, hvs := range r.Header {
 		for _, hv := range hvs {
@@ -100,6 +102,7 @@ func DefaultRequestStruct() (req RequestT) {
 	req.Method = LogFieldValueDefaultStr
 	req.Host = LogFieldValueDefaultStr
 	req.Path = LogFieldValueDefaultStr
+	req.QueryParams = LogFieldValueDefaultStr
 	req.Headers = make(http.Header)
 	req.Body = LogFieldValueDefaultStr
 	return req

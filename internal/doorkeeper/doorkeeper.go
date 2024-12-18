@@ -154,14 +154,14 @@ func (d *DoorkeeperT) handleRequest(w http.ResponseWriter, r *http.Request) {
 
 			valid, err = checkAuthorization(r, d.auths[authn])
 			if err != nil {
+				valid = false
 				utils.SetLogField(logFields, utils.LogFieldKeyError, err.Error())
-				d.log.Error("unable to check authorization", logFields)
-				return
 			}
 			utils.SetLogField(logFields, utils.LogFieldKeyAuthorizationResult, strconv.FormatBool(valid))
 
-			d.log.Debug("success in check authorization", logFields)
+			d.log.Debug("check authorization result", logFields)
 			reqResults = append(reqResults, valid)
+			utils.SetLogField(logFields, utils.LogFieldKeyError, utils.LogFieldValueDefaultStr)
 		}
 		utils.SetLogField(logFields, utils.LogFieldKeyAuthorization, utils.LogFieldValueDefaultStr)
 		utils.SetLogField(logFields, utils.LogFieldKeyAuthorizationResult, utils.LogFieldValueDefaultStr)

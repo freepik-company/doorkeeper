@@ -74,7 +74,8 @@ type HmacConfigT struct {
 	EncryptionAlgorithm string `yaml:"encryptionAlgorithm"`
 
 	//
-	Url HmacUrlConfigT `yaml:"url,omitempty"`
+	MandatoryFields []string       `yaml:"mandatoryFields,omitempty"`
+	Url                  HmacUrlConfigT `yaml:"url,omitempty"`
 }
 
 type HmacUrlConfigT struct {

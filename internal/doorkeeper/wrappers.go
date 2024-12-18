@@ -72,9 +72,9 @@ func checkAuthorization(r *http.Request, auth *v1alpha2.AuthorizationConfigT) (v
 
 				//
 				var generatedHmac, receivedHmac string
-				valid, generatedHmac, receivedHmac, err = hmac.ValidateTokenUrl(paramToCheck, auth.Hmac.EncryptionKey, auth.Hmac.EncryptionAlgorithm, path)
+				valid, generatedHmac, receivedHmac, err = hmac.ValidateTokenUrl(paramToCheck, auth.Hmac.EncryptionKey, auth.Hmac.EncryptionAlgorithm, path, auth.Hmac.MandatoryFields)
 				if err != nil {
-					err = fmt.Errorf("unable to validate token in request: %s", err.Error())
+					err = fmt.Errorf("unable to validate hmac sign in request: %s", err.Error())
 					return valid, err
 				}
 				_ = generatedHmac

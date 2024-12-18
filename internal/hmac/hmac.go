@@ -50,17 +50,39 @@ func generateHMAC(tokenDigest, encryptionKey, encryptionAlgorithm string) (token
 
 // ValidateToken TODO
 // token: exp={int}~hmac={hash}
-func ValidateTokenUrl(token, encryptionKey, encryptionAlgorithm, url string) (isValid bool, generatedHmac, receivedHmac string, err error) {
+func ValidateTokenUrl(token, encryptionKey, encryptionAlgorithm, url string, mandatoryFields []string) (isValid bool, generatedHmac, receivedHmac string, err error) {
+	tokenFields := map[string]string{}
+	tokenParts := strings.Split(token, "~")
+	for _, fieldv := range tokenParts {
+		fieldParts := strings.SplitN(fieldv, "=", 2)
+		if len(fieldParts) != 2 {
+			continue
+		}
+		tokenFields[fieldParts[0]] = fieldParts[1]
+	}
+
+	for _, fv := range mandatoryFields {
+		if _, ok := tokenFields[fv]; !ok {
+			err = fmt.Errorf("mandatory field '%s' not found in hmac sign", fv)
+			return isValid, generatedHmac, receivedHmac, err
+		}
+	}
+
 	// split token to get tokenDigest and HMAC
-	tokenParts := strings.Split(token, "~hmac=")
-	if len(tokenParts) != 2 {
+	hmacTokenParts := strings.Split(token, "~hmac=")
+	if len(hmacTokenParts) != 2 {
+		err = fmt.Errorf("hmac sign without main 'hmac' field")
 		return isValid, generatedHmac, receivedHmac, err
 	}
-	tokenDigest := fmt.Sprintf("%s~url=%s", tokenParts[0], url)
-	tokenHMAC := []byte(tokenParts[1])
+	tokenDigest := fmt.Sprintf("%s~url=%s", hmacTokenParts[0], url)
+	tokenHMAC := []byte(hmacTokenParts[1])
 
 	// check expiration time
-	expPart := strings.TrimPrefix(strings.Split(tokenDigest, "~")[0], "exp=")
+	expPart, ok := tokenFields["exp"]
+	if !ok {
+		err = fmt.Errorf("hmac sign without main 'exp' field")
+		return isValid, generatedHmac, receivedHmac, err
+	}
 	exp, err := strconv.ParseInt(expPart, 10, 64)
 	if err != nil {
 		err = fmt.Errorf("invalid expiration time '%s'", expPart)
@@ -68,7 +90,7 @@ func ValidateTokenUrl(token, encryptionKey, encryptionAlgorithm, url string) (is
 	}
 
 	if time.Now().Unix() >= exp {
-		err = fmt.Errorf("token has expired")
+		err = fmt.Errorf("hmac sign has expired")
 		return isValid, generatedHmac, receivedHmac, err
 	}
 
