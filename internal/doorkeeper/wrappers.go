@@ -120,6 +120,13 @@ func checkAuthorization(r *http.Request, auth *v1alpha2.AuthorizationConfigT) (v
 				valid = !valid
 			}
 		}
+	case config.ConfigTypeValueAuthMATCH:
+		{
+			valid = auth.Match.CompiledRegex.MatchString(paramToCheck)
+			if auth.Match.Reverse {
+				valid = !valid
+			}
+		}
 	}
 
 	return valid, err

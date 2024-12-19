@@ -21,6 +21,7 @@ const (
 
 	ConfigTypeValueAuthHMAC   = "HMAC"
 	ConfigTypeValueAuthIPLIST = "IPLIST"
+	ConfigTypeValueAuthMATCH  = "MATCH"
 
 	ConfigTypeValueAuthParamHEADER = "Header"
 	ConfigTypeValueAuthParamQUERY  = "Query"
@@ -81,7 +82,7 @@ func checkConfig(config v1alpha2.DoorkeeperConfigT) error {
 		return fmt.Errorf("no authorizations defined")
 	}
 
-	authTypes := []string{ConfigTypeValueAuthHMAC, ConfigTypeValueAuthIPLIST}
+	authTypes := []string{ConfigTypeValueAuthHMAC, ConfigTypeValueAuthIPLIST, ConfigTypeValueAuthMATCH}
 	authParamTypes := []string{ConfigTypeValueAuthParamHEADER, ConfigTypeValueAuthParamQUERY}
 	for _, authv := range config.Auths {
 		// check auth basic fields

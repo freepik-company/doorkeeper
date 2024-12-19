@@ -59,6 +59,7 @@ type AuthorizationConfigT struct {
 
 	Hmac   HmacConfigT   `yaml:"hmac"`
 	IpList IpListConfigT `yaml:"ipList"`
+	Match  MatchConfigT  `yaml:"match"`
 }
 
 type AuthParamConfigT struct {
@@ -75,7 +76,7 @@ type HmacConfigT struct {
 
 	//
 	MandatoryFields []string       `yaml:"mandatoryFields,omitempty"`
-	Url                  HmacUrlConfigT `yaml:"url,omitempty"`
+	Url             HmacUrlConfigT `yaml:"url,omitempty"`
 }
 
 type HmacUrlConfigT struct {
@@ -94,6 +95,16 @@ type IpListConfigT struct {
 	// Carry stuff
 	CidrCompiled            *net.IPNet
 	TrustedNetworksCompiled []*net.IPNet
+}
+
+// MATCH
+
+type MatchConfigT struct {
+	Reverse bool   `yaml:"reverse"`
+	Pattern string `yaml:"pattern"`
+
+	// Carry stuff
+	CompiledRegex *regexp.Regexp
 }
 
 //--------------------------------

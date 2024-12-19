@@ -42,6 +42,9 @@ authorizations:
     cidr: "0.0.0.0/0"
     trustedNetworks:
       - 127.0.0.0/8
+  match:
+    reverse: true
+    pattern: "^([a-zA-Z0-9-]+)pattern$"
 
 requestAuthRequirements:
 - name: any-example

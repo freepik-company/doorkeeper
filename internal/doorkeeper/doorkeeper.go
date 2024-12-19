@@ -68,6 +68,10 @@ func NewDoorkeeper(filepath string) (d *DoorkeeperT, err error) {
 					d.config.Auths[authi].IpList.TrustedNetworksCompiled = append(d.config.Auths[authi].IpList.TrustedNetworksCompiled, cidr)
 				}
 			}
+		case config.ConfigTypeValueAuthMATCH:
+			{
+				d.config.Auths[authi].Match.CompiledRegex = regexp.MustCompile(authv.Match.Pattern)
+			}
 		}
 	}
 
