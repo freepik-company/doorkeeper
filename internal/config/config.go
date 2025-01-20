@@ -14,24 +14,27 @@ import (
 const (
 	// Modifiers types
 
-	ConfigTypeValueModifierPATH   = "Path"
-	ConfigTypeValueModifierHEADER = "Header"
+	ConfigModifierTypePATH   = "PATH"
+	ConfigModifierTypeHEADER = "HEADER"
 
 	// Authorizations types
 
-	ConfigTypeValueAuthHMAC   = "HMAC"
-	ConfigTypeValueAuthIPLIST = "IPLIST"
-	ConfigTypeValueAuthMATCH  = "MATCH"
+	ConfigAuthTypeHMAC   = "HMAC"
+	ConfigAuthTypeIPLIST = "IPLIST"
+	ConfigAuthTypeMATCH  = "MATCH"
 
-	ConfigTypeValueAuthParamHEADER = "Header"
-	ConfigTypeValueAuthParamQUERY  = "Query"
+	ConfigAuthParamTypeHEADER = "HEADER"
+	ConfigAuthParamTypeQUERY  = "QUERY"
 
-	ConfigTypeValueAuthHmacURL = "URL"
+	ConfigAuthHmacTypeURL = "URL"
 
-	ConfigTypeValueAuthHmacAlgorithmMD5    = "md5"
-	ConfigTypeValueAuthHmacAlgorithmSHA1   = "sha1"
-	ConfigTypeValueAuthHmacAlgorithmSHA256 = "sha256"
-	ConfigTypeValueAuthHmacAlgorithmSHA512 = "sha512"
+	ConfigAuthHmacUrlFromPATH   = "PATH"
+	ConfigAuthHmacUrlFromHEADER = "HEADER"
+
+	ConfigAuthHmacAlgorithmMD5    = "md5"
+	ConfigAuthHmacAlgorithmSHA1   = "sha1"
+	ConfigAuthHmacAlgorithmSHA256 = "sha256"
+	ConfigAuthHmacAlgorithmSHA512 = "sha512"
 
 	// Requirements types
 
@@ -53,23 +56,36 @@ func expandEnv(input []byte) []byte {
 }
 
 // checkConfig TODO
-func checkConfig(config v1alpha2.DoorkeeperConfigT) error {
+func checkConfig(config *v1alpha2.DoorkeeperConfigT) error {
 	//------------------------------
 	// Modifiers
 	//------------------------------
 
-	modTypes := []string{ConfigTypeValueModifierPATH}
+	modTypes := []string{ConfigModifierTypePATH, ConfigModifierTypeHEADER}
 	for _, modv := range config.Modifiers {
 		if !slices.Contains(modTypes, modv.Type) {
 			return fmt.Errorf("modifier type must be one of %v", modTypes)
 		}
 
 		switch modv.Type {
-		case "Path":
+		case ConfigModifierTypePATH:
 			{
 				if modv.Path.Pattern == "" {
 					return fmt.Errorf("pattern in path modifier must be set")
 				}
+			}
+		case ConfigModifierTypeHEADER:
+			{
+				if modv.Header.Name == "" {
+					return fmt.Errorf("header name in modifier must be set")
+				}
+				if modv.Header.Pattern == "" {
+					return fmt.Errorf("pattern in header modifier must be set")
+				}
+			}
+		default:
+			{
+				return fmt.Errorf("modifier type must be set")
 			}
 		}
 	}
@@ -82,8 +98,15 @@ func checkConfig(config v1alpha2.DoorkeeperConfigT) error {
 		return fmt.Errorf("no authorizations defined")
 	}
 
-	authTypes := []string{ConfigTypeValueAuthHMAC, ConfigTypeValueAuthIPLIST, ConfigTypeValueAuthMATCH}
-	authParamTypes := []string{ConfigTypeValueAuthParamHEADER, ConfigTypeValueAuthParamQUERY}
+	authTypes := []string{
+		ConfigAuthTypeHMAC,
+		ConfigAuthTypeIPLIST,
+		ConfigAuthTypeMATCH,
+	}
+	authParamTypes := []string{
+		ConfigAuthParamTypeHEADER,
+		ConfigAuthParamTypeQUERY,
+	}
 	for _, authv := range config.Auths {
 		// check auth basic fields
 		if authv.Name == "" {
@@ -105,14 +128,19 @@ func checkConfig(config v1alpha2.DoorkeeperConfigT) error {
 
 		// check specific types param fields
 		switch authv.Type {
-		case ConfigTypeValueAuthHMAC:
+		case ConfigAuthTypeHMAC:
 			{
-				authHmacTypes := []string{ConfigTypeValueAuthHmacURL}
+				authHmacTypes := []string{ConfigAuthHmacTypeURL}
 				if !slices.Contains(authHmacTypes, authv.Hmac.Type) {
 					return fmt.Errorf("hmac type in authorizations must be one of %v", authHmacTypes)
 				}
 
-				encryptionAlgorithms := []string{ConfigTypeValueAuthHmacAlgorithmMD5, ConfigTypeValueAuthHmacAlgorithmSHA1, ConfigTypeValueAuthHmacAlgorithmSHA256, ConfigTypeValueAuthHmacAlgorithmSHA512}
+				encryptionAlgorithms := []string{
+					ConfigAuthHmacAlgorithmMD5,
+					ConfigAuthHmacAlgorithmSHA1,
+					ConfigAuthHmacAlgorithmSHA256,
+					ConfigAuthHmacAlgorithmSHA512,
+				}
 				if !slices.Contains(encryptionAlgorithms, authv.Hmac.EncryptionAlgorithm) {
 					return fmt.Errorf("hmac encryption algorithm in authorizations must be one of %v", encryptionAlgorithms)
 				}
@@ -121,7 +149,7 @@ func checkConfig(config v1alpha2.DoorkeeperConfigT) error {
 					return fmt.Errorf("encription key in hmac authorizations must be set")
 				}
 			}
-		case ConfigTypeValueAuthIPLIST:
+		case ConfigAuthTypeIPLIST:
 			{
 				if authv.IpList.Cidr == "" {
 					return fmt.Errorf("cidr field in ip list authorizations must be set")
@@ -191,7 +219,7 @@ func ParseConfigFile(filepath string) (config v1alpha2.DoorkeeperConfigT, err er
 		return config, err
 	}
 
-	err = checkConfig(config)
+	err = checkConfig(&config)
 
 	return config, err
 }

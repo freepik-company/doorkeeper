@@ -14,6 +14,7 @@ import (
 	"doorkeeper/api/v1alpha2"
 	"doorkeeper/internal/config"
 	"doorkeeper/internal/logger"
+	"doorkeeper/internal/modifiers"
 	"doorkeeper/internal/utils"
 )
 
@@ -26,6 +27,7 @@ type DoorkeeperT struct {
 	log    logger.LoggerT
 
 	server *http.Server
+	mods   []modifiers.ModifierI
 	auths  map[string]*v1alpha2.AuthorizationConfigT
 }
 
@@ -36,23 +38,29 @@ func NewDoorkeeper(filepath string) (d *DoorkeeperT, err error) {
 		return d, err
 	}
 
-	for modi, modv := range d.config.Modifiers {
-		switch modv.Type {
-		case config.ConfigTypeValueModifierPATH:
-			{
-				d.config.Modifiers[modi].Path.CompiledRegex = regexp.MustCompile(modv.Path.Pattern)
-			}
-		case config.ConfigTypeValueModifierHEADER:
-			{
-				return d, fmt.Errorf("header modifier type not implemented yet")
-			}
+	for _, modv := range d.config.Modifiers {
+		mod, err := modifiers.GetModifier(modv)
+		if err != nil {
+			return d, err
 		}
+
+		d.mods = append(d.mods, mod)
+		// switch modv.Type {
+		// case config.ConfigModifierTypePATH:
+		// 	{
+		// 		d.config.Modifiers[modi].Path.CompiledRegex = regexp.MustCompile(modv.Path.Pattern)
+		// 	}
+		// case config.ConfigModifierTypeHEADER:
+		// 	{
+		// 		d.config.Modifiers[modi].Header.CompiledRegex = regexp.MustCompile(modv.Header.Pattern)
+		// 	}
+		// }
 	}
 
 	for authi, authv := range d.config.Auths {
 		switch authv.Type {
-		case config.ConfigTypeValueAuthHMAC:
-		case config.ConfigTypeValueAuthIPLIST:
+		case config.ConfigAuthTypeHMAC:
+		case config.ConfigAuthTypeIPLIST:
 			{
 				_, d.config.Auths[authi].IpList.CidrCompiled, err = net.ParseCIDR(authv.IpList.Cidr)
 				if err != nil {
@@ -68,7 +76,7 @@ func NewDoorkeeper(filepath string) (d *DoorkeeperT, err error) {
 					d.config.Auths[authi].IpList.TrustedNetworksCompiled = append(d.config.Auths[authi].IpList.TrustedNetworksCompiled, cidr)
 				}
 			}
-		case config.ConfigTypeValueAuthMATCH:
+		case config.ConfigAuthTypeMATCH:
 			{
 				d.config.Auths[authi].Match.CompiledRegex = regexp.MustCompile(authv.Match.Pattern)
 			}
@@ -145,7 +153,11 @@ func (d *DoorkeeperT) handleRequest(w http.ResponseWriter, r *http.Request) {
 		d.log.Info("success in handle request", logFields)
 	}()
 
-	d.applyModifiers(r)
+	// Apply modifiers to the request
+	for modi := range d.mods {
+		d.mods[modi].Apply(r)
+	}
+	// d.applyModifiers(r)
 	responseStruct.Request = utils.RequestStruct(r)
 
 	for _, reqv := range d.config.RequestAuthReq {

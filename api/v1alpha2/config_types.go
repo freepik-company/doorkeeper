@@ -36,11 +36,21 @@ type DoorkeeperConfigT struct {
 //--------------------------------
 
 type ModifierConfigT struct {
-	Type string              `yaml:"type"` // values: Path
-	Path ModifierPathConfigT `yaml:"path"`
+	Type   string                `yaml:"type"` // values: PATH|HEADER
+	Path   ModifierPathConfigT   `yaml:"path"`
+	Header ModifierHeaderConfigT `yaml:"header"`
 }
 
 type ModifierPathConfigT struct {
+	Pattern string `yaml:"pattern"`
+	Replace string `yaml:"replace"`
+
+	// Carry stuff
+	CompiledRegex *regexp.Regexp
+}
+
+type ModifierHeaderConfigT struct {
+	Name    string `yaml:"name"`
 	Pattern string `yaml:"pattern"`
 	Replace string `yaml:"replace"`
 
@@ -80,8 +90,10 @@ type HmacConfigT struct {
 }
 
 type HmacUrlConfigT struct {
-	EarlyEncode bool `yaml:"earlyEncode,omitempty"`
-	LowerEncode bool `yaml:"lowerEncode,omitempty"`
+	From        string `yaml:"from,omitempty"` // values: PATH|QUERY|HEADER
+	Name        string `yaml:"name,omitempty"`
+	EarlyEncode bool   `yaml:"earlyEncode,omitempty"`
+	LowerEncode bool   `yaml:"lowerEncode,omitempty"`
 }
 
 // IPLIST

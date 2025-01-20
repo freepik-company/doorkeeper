@@ -32,21 +32,22 @@ func sendResponse(w http.ResponseWriter, resp utils.ResponseT) (n int, err error
 	return n, err
 }
 
-func (d *DoorkeeperT) applyModifiers(r *http.Request) {
-	for _, modv := range d.config.Modifiers {
-		switch modv.Type {
-		case config.ConfigTypeValueModifierPATH:
-			r.URL.Path = modv.Path.CompiledRegex.ReplaceAllString(r.URL.Path, modv.Path.Replace)
+// func (d *DoorkeeperT) applyModifiers(r *http.Request) {
+// 	for _, modv := range d.config.Modifiers {
+// 		switch modv.Type {
+// 		case config.ConfigModifierTypePATH:
+// 			r.URL.Path = modv.Path.CompiledRegex.ReplaceAllString(r.URL.Path, modv.Path.Replace)
 
-		case config.ConfigTypeValueModifierHEADER:
-			// TODO
-		}
-	}
-}
+// 		case config.ConfigModifierTypeHEADER:
+// 			headerVal := modv.Header.CompiledRegex.ReplaceAllString(r.Header.Get(modv.Header.Name), modv.Header.Replace)
+// 			r.Header.Set(modv.Header.Name, headerVal)
+// 		}
+// 	}
+// }
 
 func checkAuthorization(r *http.Request, auth *v1alpha2.AuthorizationConfigT) (valid bool, err error) {
 	paramToCheck := r.URL.Query().Get(auth.Param.Name)
-	if auth.Param.Type == config.ConfigTypeValueAuthParamHEADER {
+	if auth.Param.Type == config.ConfigAuthParamTypeHEADER {
 		paramToCheck = r.Header.Get(auth.Param.Name)
 	}
 
@@ -56,15 +57,22 @@ func checkAuthorization(r *http.Request, auth *v1alpha2.AuthorizationConfigT) (v
 	}
 
 	switch auth.Type {
-	case config.ConfigTypeValueAuthHMAC:
+	case config.ConfigAuthTypeHMAC:
 		{
-			path := strings.Split(r.URL.Path, "?")[0]
-			if auth.Hmac.Type == config.ConfigTypeValueAuthHmacURL {
+			valueToCheck := ""
+			if auth.Hmac.Type == config.ConfigAuthHmacTypeURL {
+				switch auth.Hmac.Url.From {
+				case config.ConfigAuthHmacUrlFromPATH:
+					valueToCheck = strings.Split(r.URL.Path, "?")[0]
+				case config.ConfigAuthHmacUrlFromHEADER:
+					valueToCheck = r.Header.Get(auth.Hmac.Url.Name)
+				}
+
 				if auth.Hmac.Url.EarlyEncode {
-					path = url.PathEscape(path)
+					valueToCheck = url.PathEscape(valueToCheck)
 
 					if auth.Hmac.Url.LowerEncode {
-						path = urlEncodeRegex.ReplaceAllStringFunc(path, func(match string) string {
+						valueToCheck = urlEncodeRegex.ReplaceAllStringFunc(valueToCheck, func(match string) string {
 							return strings.ToLower(match)
 						})
 					}
@@ -72,7 +80,7 @@ func checkAuthorization(r *http.Request, auth *v1alpha2.AuthorizationConfigT) (v
 
 				//
 				var generatedHmac, receivedHmac string
-				valid, generatedHmac, receivedHmac, err = hmac.ValidateTokenUrl(paramToCheck, auth.Hmac.EncryptionKey, auth.Hmac.EncryptionAlgorithm, path, auth.Hmac.MandatoryFields)
+				valid, generatedHmac, receivedHmac, err = hmac.ValidateTokenUrl(paramToCheck, auth.Hmac.EncryptionKey, auth.Hmac.EncryptionAlgorithm, valueToCheck, auth.Hmac.MandatoryFields)
 				if err != nil {
 					err = fmt.Errorf("unable to validate hmac sign in request: %s", err.Error())
 					return valid, err
@@ -81,7 +89,7 @@ func checkAuthorization(r *http.Request, auth *v1alpha2.AuthorizationConfigT) (v
 				_ = receivedHmac
 			}
 		}
-	case config.ConfigTypeValueAuthIPLIST:
+	case config.ConfigAuthTypeIPLIST:
 		{
 			iplist := strings.Split(paramToCheck, auth.IpList.Separator)
 
@@ -120,7 +128,7 @@ func checkAuthorization(r *http.Request, auth *v1alpha2.AuthorizationConfigT) (v
 				valid = !valid
 			}
 		}
-	case config.ConfigTypeValueAuthMATCH:
+	case config.ConfigAuthTypeMATCH:
 		{
 			valid = auth.Match.CompiledRegex.MatchString(paramToCheck)
 			if auth.Match.Reverse {
