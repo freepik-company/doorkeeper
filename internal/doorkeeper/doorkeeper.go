@@ -1,110 +1,102 @@
 package doorkeeper
 
 import (
-	"context"
 	"fmt"
-	"net"
 	"net/http"
-	"regexp"
 	"slices"
-	"strconv"
 	"time"
 
 	//
-	"doorkeeper/api/v1alpha2"
+
+	"doorkeeper/internal/authorizations"
 	"doorkeeper/internal/config"
 	"doorkeeper/internal/logger"
 	"doorkeeper/internal/modifiers"
 	"doorkeeper/internal/utils"
 )
 
-var (
-	urlEncodeRegex = regexp.MustCompile(`%[0-9a-fA-F]{2}`)
-)
-
 type DoorkeeperT struct {
-	config v1alpha2.DoorkeeperConfigT
-	log    logger.LoggerT
+	log logger.LoggerT
 
 	server *http.Server
-	mods   []modifiers.ModifierI
-	auths  map[string]*v1alpha2.AuthorizationConfigT
+
+	mods         []modifiers.ModifierI
+	auths        map[string]authorizations.AuthI
+	requirements []requirementT
+
+	allowed       responseT
+	denied        responseT
+	internalError responseT
+}
+
+type requirementT struct {
+	Name           string
+	Type           string
+	Authorizations []string
+}
+
+type responseT struct {
+	Code    int         `json:"code"`
+	Headers http.Header `json:"headers"`
+	Body    []byte      `json:"body"`
 }
 
 func NewDoorkeeper(filepath string) (d *DoorkeeperT, err error) {
 	d = &DoorkeeperT{}
-	d.config, err = config.ParseConfigFile(filepath)
+	cfg, err := config.ParseConfigFile(filepath)
 	if err != nil {
 		return d, err
 	}
 
-	for _, modv := range d.config.Modifiers {
+	for _, modv := range cfg.Modifiers {
 		mod, err := modifiers.GetModifier(modv)
 		if err != nil {
 			return d, err
 		}
 
 		d.mods = append(d.mods, mod)
-		// switch modv.Type {
-		// case config.ConfigModifierTypePATH:
-		// 	{
-		// 		d.config.Modifiers[modi].Path.CompiledRegex = regexp.MustCompile(modv.Path.Pattern)
-		// 	}
-		// case config.ConfigModifierTypeHEADER:
-		// 	{
-		// 		d.config.Modifiers[modi].Header.CompiledRegex = regexp.MustCompile(modv.Header.Pattern)
-		// 	}
-		// }
 	}
 
-	for authi, authv := range d.config.Auths {
-		switch authv.Type {
-		case config.ConfigAuthTypeHMAC:
-		case config.ConfigAuthTypeIPLIST:
-			{
-				_, d.config.Auths[authi].IpList.CidrCompiled, err = net.ParseCIDR(authv.IpList.Cidr)
-				if err != nil {
-					return d, err
-				}
+	// Set responses
+	d.allowed = newResponse(cfg.Response.Allowed.StatusCode, cfg.Response.Allowed.Headers, []byte(cfg.Response.Allowed.Body))
+	d.denied = newResponse(cfg.Response.Denied.StatusCode, cfg.Response.Denied.Headers, []byte(cfg.Response.Denied.Body))
+	d.internalError = newResponse(
+		http.StatusInternalServerError,
+		map[string]string{},
+		[]byte(fmt.Sprintf("%d %s", http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))),
+	)
 
-				for _, tnv := range authv.IpList.TrustedNetworks {
-					var cidr *net.IPNet
-					_, cidr, err = net.ParseCIDR(tnv)
-					if err != nil {
-						return d, err
-					}
-					d.config.Auths[authi].IpList.TrustedNetworksCompiled = append(d.config.Auths[authi].IpList.TrustedNetworksCompiled, cidr)
-				}
-			}
-		case config.ConfigAuthTypeMATCH:
-			{
-				d.config.Auths[authi].Match.CompiledRegex = regexp.MustCompile(authv.Match.Pattern)
-			}
+	// Set auth
+	d.auths = make(map[string]authorizations.AuthI)
+	for _, authv := range cfg.Auths {
+		d.auths[authv.Name], err = authorizations.GetAuthorization(authv)
+		if err != nil {
+			return d, err
 		}
 	}
 
-	d.auths = make(map[string]*v1alpha2.AuthorizationConfigT)
-	for authi, authv := range d.config.Auths {
-		d.auths[authv.Name] = &d.config.Auths[authi]
+	for _, rv := range cfg.RequestAuthReq {
+		req := requirementT{
+			Name: rv.Name,
+			Type: rv.Type,
+		}
+		req.Authorizations = append(req.Authorizations, rv.Authorizations...)
+
+		d.requirements = append(d.requirements, req)
 	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", d.handleRequest)
 	mux.HandleFunc("/healthz", getHealthz)
 	d.server = &http.Server{
-		Addr:         fmt.Sprintf("%s:%s", d.config.Address, d.config.Port),
+		Addr:         fmt.Sprintf("%s:%s", cfg.Address, cfg.Port),
 		Handler:      mux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  30 * time.Second,
 	}
 
-	level := logger.GetLevel(d.config.LogLevel)
-	commonFields := map[string]any{
-		"service": "doorkeeper",
-		"serve":   fmt.Sprintf("%s:%s", d.config.Address, d.config.Port),
-	}
-	d.log = logger.NewLogger(context.Background(), level, commonFields)
+	d.log = logger.NewLogger(logger.GetLevel(cfg.LogLevel))
 	return d, err
 }
 
@@ -118,98 +110,81 @@ func getHealthz(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *DoorkeeperT) handleRequest(w http.ResponseWriter, r *http.Request) {
-	var err error = nil
-
 	logFields := utils.GetDefaultLogFields()
-	utils.SetLogField(logFields, utils.LogFieldKeyRequestID, utils.RequestID(r))
-	utils.SetLogField(logFields, utils.LogFieldKeyRequest, utils.RequestStruct(r))
+	logFields.Set(utils.LogFieldKeyRequestID, utils.RequestID(r))
 
-	// Set denied response values
-	responseStruct := utils.NewResponseStruct(d.config.Response.Denied.StatusCode, nil, d.config.Response.Denied.Body)
-	for hk, hv := range d.config.Response.Denied.Headers {
-		responseStruct.Headers.Set(hk, hv)
-	}
-
-	d.log.Info("handle request", logFields)
+	// Set default denied response values
+	var err error = nil
+	var response responseT = d.denied
 
 	defer func() {
 		if err != nil {
 			// Set error response values
-			responseStruct.Code = http.StatusInternalServerError
-			responseStruct.Body = fmt.Sprintf("%d %s", responseStruct.Code, http.StatusText(responseStruct.Code))
-			responseStruct.Length = len(responseStruct.Body)
+			response = d.internalError
 		}
 
-		utils.SetLogField(logFields, utils.LogFieldKeyResponse, responseStruct)
+		logFields.Set(utils.LogFieldKeyResponse, response)
 
-		n, err := sendResponse(w, responseStruct)
-		utils.SetLogField(logFields, utils.LogFieldKeyResponseBytes, n)
+		n, err := sendResponse(w, response)
 		if err != nil {
-			utils.SetLogField(logFields, utils.LogFieldKeyError, err.Error())
+			logFields.Set(utils.LogFieldKeyError, fmt.Sprintf("only %d bytes were delivered: %s", n, err.Error()))
 			d.log.Error("error in send response", logFields)
 			return
 		}
-
-		d.log.Info("success in handle request", logFields)
 	}()
+
+	logFields.Set(utils.LogFieldKeyRequest, utils.RequestLogStruct(r))
 
 	// Apply modifiers to the request
 	for modi := range d.mods {
 		d.mods[modi].Apply(r)
 	}
-	// d.applyModifiers(r)
-	responseStruct.Request = utils.RequestStruct(r)
 
-	for _, reqv := range d.config.RequestAuthReq {
-		utils.SetLogField(logFields, utils.LogFieldKeyRequirement, reqv.Name)
+	logFields.Set(utils.LogFieldKeyRequestMod, utils.RequestLogStruct(r))
+	d.log.Info("handle request", logFields)
+	logFields.Del(utils.LogFieldKeyRequest)
+
+	for _, reqv := range d.requirements {
+		logFields.Set(utils.LogFieldKeyRequirement, reqv.Name)
 
 		reqResults := []bool{}
-		valid := false
 		for _, authn := range reqv.Authorizations {
-			utils.SetLogField(logFields, utils.LogFieldKeyAuthorization, authn)
+			logFields.Set(utils.LogFieldKeyAuthorization, authn)
 
-			valid, err = checkAuthorization(r, d.auths[authn])
+			err = d.auths[authn].Check(r)
 			if err != nil {
-				utils.SetLogField(logFields, utils.LogFieldKeyError, err.Error())
-				valid = false
+				logFields.Set(utils.LogFieldKeyError, err.Error())
+				d.log.Debug("error in authorization check", logFields)
+				logFields.Del(utils.LogFieldKeyError)
+
+				reqResults = append(reqResults, false)
 				err = nil
+				continue
 			}
-			utils.SetLogField(logFields, utils.LogFieldKeyAuthorizationResult, strconv.FormatBool(valid))
 
-			d.log.Debug("check authorization result", logFields)
-			reqResults = append(reqResults, valid)
-			utils.SetLogField(logFields, utils.LogFieldKeyError, utils.LogFieldValueDefaultStr)
+			d.log.Debug("success in authorization check", logFields)
+			reqResults = append(reqResults, true)
 		}
-		utils.SetLogField(logFields, utils.LogFieldKeyAuthorization, utils.LogFieldValueDefaultStr)
-		utils.SetLogField(logFields, utils.LogFieldKeyAuthorizationResult, utils.LogFieldValueDefaultStr)
+		logFields.Del(utils.LogFieldKeyAuthorization)
+		logFields.Del(utils.LogFieldKeyRequirement)
 
-		switch reqv.Type {
-		case config.ConfigTypeValueRequirementALL:
-			{
-				if slices.Contains(reqResults, false) {
-					d.log.Info("denied request", logFields)
-					return
-				}
-			}
-		case config.ConfigTypeValueRequirementANY:
-			{
-				if !slices.Contains(reqResults, true) {
-					d.log.Info("denied request", logFields)
-					return
-				}
-			}
+		invalid := slices.Contains(reqResults, false) // result with ConfigTypeValueRequirementALL type by default
+		if reqv.Type == config.ConfigTypeValueRequirementANY {
+			invalid = !slices.Contains(reqResults, true)
+		}
+
+		if invalid {
+			logFields.Set(utils.LogFieldKeyResponse, response)
+			d.log.Info("denied request", logFields)
+			return
 		}
 	}
-	utils.SetLogField(logFields, utils.LogFieldKeyRequirement, utils.LogFieldValueDefaultStr)
+	logFields.Del(utils.LogFieldKeyRequirement)
 
 	// Set allowed response values
-	responseStruct.Code = d.config.Response.Allowed.StatusCode
-	responseStruct.Body = d.config.Response.Allowed.Body
-	responseStruct.Length = len(d.config.Response.Allowed.Body)
-	for hk, hv := range d.config.Response.Allowed.Headers {
-		responseStruct.Headers.Set(hk, hv)
-	}
+	response = d.allowed
 
+	logFields.Set(utils.LogFieldKeyResponse, response)
 	d.log.Info("allowed request", logFields)
 }
 
@@ -219,7 +194,7 @@ func (d *DoorkeeperT) Run() {
 	d.log.Info("starting HTTP server", logFields)
 	err := d.server.ListenAndServe()
 	if err != nil {
-		utils.SetLogField(logFields, utils.LogFieldKeyError, err.Error())
+		logFields.Set(utils.LogFieldKeyError, err.Error())
 		d.log.Error("server failed", logFields)
 	}
 }
@@ -229,7 +204,7 @@ func (d *DoorkeeperT) Stop() {
 
 	err := d.server.Close()
 	if err != nil {
-		utils.SetLogField(logFields, utils.LogFieldKeyError, err.Error())
+		logFields.Set(utils.LogFieldKeyError, err.Error())
 		d.log.Error("HTTP server close with error", logFields)
 		return
 	}

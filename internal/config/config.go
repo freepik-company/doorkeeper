@@ -107,7 +107,7 @@ func checkConfig(config *v1alpha2.DoorkeeperConfigT) error {
 		ConfigAuthParamTypeHEADER,
 		ConfigAuthParamTypeQUERY,
 	}
-	for _, authv := range config.Auths {
+	for authi, authv := range config.Auths {
 		// check auth basic fields
 		if authv.Name == "" {
 			return fmt.Errorf("authorization name must be set")
@@ -135,6 +135,24 @@ func checkConfig(config *v1alpha2.DoorkeeperConfigT) error {
 					return fmt.Errorf("hmac type in authorizations must be one of %v", authHmacTypes)
 				}
 
+				if authv.Hmac.Type == ConfigAuthHmacTypeURL {
+					if authv.Hmac.Url.From == "" {
+						config.Auths[authi].Hmac.Url.From = ConfigAuthHmacUrlFromPATH
+					}
+
+					urlFroms := []string{
+						ConfigAuthHmacUrlFromPATH,
+						ConfigAuthHmacUrlFromHEADER,
+					}
+					if !slices.Contains(urlFroms, authv.Hmac.Url.From) {
+						return fmt.Errorf("hmac url from in authorizations must be one of %v", urlFroms)
+					}
+
+					if authv.Hmac.Url.From == ConfigAuthHmacUrlFromHEADER && authv.Hmac.Url.Name == "" {
+						return fmt.Errorf("if hmac url from is HEADER type, name must be set")
+					}
+				}
+
 				encryptionAlgorithms := []string{
 					ConfigAuthHmacAlgorithmMD5,
 					ConfigAuthHmacAlgorithmSHA1,
@@ -153,6 +171,12 @@ func checkConfig(config *v1alpha2.DoorkeeperConfigT) error {
 			{
 				if authv.IpList.Cidr == "" {
 					return fmt.Errorf("cidr field in ip list authorizations must be set")
+				}
+			}
+		case ConfigAuthTypeMATCH:
+			{
+				if authv.Match.Pattern == "" {
+					return fmt.Errorf("pattern field in match authorizations must be set")
 				}
 			}
 		}

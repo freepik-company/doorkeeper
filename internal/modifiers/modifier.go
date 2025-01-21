@@ -9,7 +9,7 @@ import (
 )
 
 type ModifierI interface {
-	Apply(r *http.Request) error
+	Apply(r *http.Request)
 }
 
 func GetModifier(cfg v1alpha2.ModifierConfigT) (ModifierI, error) {

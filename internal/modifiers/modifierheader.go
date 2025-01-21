@@ -22,7 +22,6 @@ func NewHeader(cfg v1alpha2.ModifierConfigT) (h *HeaderT, err error) {
 	return h, err
 }
 
-func (m *HeaderT) Apply(r *http.Request) error {
+func (m *HeaderT) Apply(r *http.Request) {
 	r.Header.Set(m.name, m.compiledRegex.ReplaceAllString(r.Header.Get(m.name), m.replace))
-	return nil
 }

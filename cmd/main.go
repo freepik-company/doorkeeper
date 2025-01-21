@@ -15,7 +15,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"os"
 	"os/signal"
@@ -34,7 +33,7 @@ var (
 func main() {
 	flag.Parse()
 
-	extLogger := logger.NewLogger(context.Background(), logger.GetLevel(*logLevelFlag), map[string]any{})
+	extLogger := logger.NewLogger(logger.GetLevel(*logLevelFlag))
 	logFields := utils.GetDefaultLogFields()
 
 	/////////////////////////////
@@ -43,7 +42,7 @@ func main() {
 
 	s, err := doorkeeper.NewDoorkeeper(*configFlag)
 	if err != nil {
-		utils.SetLogField(logFields, utils.LogFieldKeyError, err.Error())
+		logFields.Set(utils.LogFieldKeyError, err.Error())
 		extLogger.Fatal("fail in http server creation", logFields)
 	}
 

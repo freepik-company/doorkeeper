@@ -50,7 +50,7 @@ func generateHMAC(tokenDigest, encryptionKey, encryptionAlgorithm string) (token
 
 // ValidateToken TODO
 // token: exp={int}~hmac={hash}
-func ValidateTokenUrl(token, encryptionKey, encryptionAlgorithm, url string, mandatoryFields []string) (isValid bool, generatedHmac, receivedHmac string, err error) {
+func ValidateTokenUrl(token, encryptionKey, encryptionAlgorithm, url string, mandatoryFields []string) (generatedHmac, receivedHmac string, err error) {
 	tokenFields := map[string]string{}
 	tokenParts := strings.Split(token, "~")
 	for _, fieldv := range tokenParts {
@@ -64,7 +64,7 @@ func ValidateTokenUrl(token, encryptionKey, encryptionAlgorithm, url string, man
 	for _, fv := range mandatoryFields {
 		if _, ok := tokenFields[fv]; !ok {
 			err = fmt.Errorf("mandatory field '%s' not found in hmac sign", fv)
-			return isValid, generatedHmac, receivedHmac, err
+			return generatedHmac, receivedHmac, err
 		}
 	}
 
@@ -72,7 +72,7 @@ func ValidateTokenUrl(token, encryptionKey, encryptionAlgorithm, url string, man
 	hmacTokenParts := strings.Split(token, "~hmac=")
 	if len(hmacTokenParts) != 2 {
 		err = fmt.Errorf("hmac sign without main 'hmac' field")
-		return isValid, generatedHmac, receivedHmac, err
+		return generatedHmac, receivedHmac, err
 	}
 	tokenDigest := fmt.Sprintf("%s~url=%s", hmacTokenParts[0], url)
 	tokenHMAC := []byte(hmacTokenParts[1])
@@ -81,30 +81,32 @@ func ValidateTokenUrl(token, encryptionKey, encryptionAlgorithm, url string, man
 	expPart, ok := tokenFields["exp"]
 	if !ok {
 		err = fmt.Errorf("hmac sign without main 'exp' field")
-		return isValid, generatedHmac, receivedHmac, err
+		return generatedHmac, receivedHmac, err
 	}
 	exp, err := strconv.ParseInt(expPart, 10, 64)
 	if err != nil {
-		err = fmt.Errorf("invalid expiration time '%s'", expPart)
-		return isValid, generatedHmac, receivedHmac, err
+		err = fmt.Errorf("invalid expiration time format '%s'", expPart)
+		return generatedHmac, receivedHmac, err
 	}
 
 	if time.Now().Unix() >= exp {
 		err = fmt.Errorf("hmac sign has expired")
-		return isValid, generatedHmac, receivedHmac, err
+		return generatedHmac, receivedHmac, err
 	}
 
 	// generate HMAC with your local encription key to compare
 	generatedHMAC, err := generateHMAC(tokenDigest, encryptionKey, encryptionAlgorithm)
 	if err != nil {
-		return isValid, generatedHmac, receivedHmac, err
+		return generatedHmac, receivedHmac, err
 	}
 
 	generatedHmac = string(generatedHMAC)
 	receivedHmac = string(tokenHMAC)
 
 	// compare given with generated HMAC
-	isValid = hmac.Equal(generatedHMAC, tokenHMAC)
+	if !hmac.Equal(generatedHMAC, tokenHMAC) {
+		err = fmt.Errorf("invalid '%s' sign, result '%s' does not match", receivedHmac, generatedHMAC)
+	}
 
-	return isValid, generatedHmac, receivedHmac, err
+	return generatedHmac, receivedHmac, err
 }

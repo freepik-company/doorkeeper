@@ -21,7 +21,6 @@ func NewPath(cfg v1alpha2.ModifierConfigT) (p *PathT, err error) {
 	return p, err
 }
 
-func (m *PathT) Apply(r *http.Request) error {
+func (m *PathT) Apply(r *http.Request) {
 	r.URL.Path = m.compiledRegex.ReplaceAllString(r.URL.Path, m.replace)
-	return nil
 }
